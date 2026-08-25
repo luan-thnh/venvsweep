@@ -98,14 +98,14 @@ npx venvsweep ~/Developer --json
 
 ## Interactive controls
 
-| Key | Action |
-| --- | --- |
-| `↑` / `↓` | Move cursor |
-| `j` / `k` | Move cursor, Vim-style |
-| `Space` | Toggle the current environment |
-| `A` | Select or unselect all environments |
-| `Enter` | Continue with selected removals |
-| `Q` | Quit |
+| Key       | Action                              |
+| --------- | ----------------------------------- |
+| `↑` / `↓` | Move cursor                         |
+| `j` / `k` | Move cursor, Vim-style              |
+| `Space`   | Toggle the current environment      |
+| `A`       | Select or unselect all environments |
+| `Enter`   | Continue with selected removals     |
+| `Q`       | Quit                                |
 
 The TUI uses an alternate terminal screen and keeps the visible list inside a viewport, so selecting an item does not flood or scroll your shell history.
 
@@ -115,15 +115,15 @@ The TUI uses an alternate terminal screen and keeps the visible list inside a vi
 venvsweep [directory] [options]
 ```
 
-| Option | Description |
-| --- | --- |
-| `-d, --directory <path>` | Search root. Defaults to the current directory. |
-| `-t, --targets <names>` | Comma-separated environment directory names. Defaults to `.venv,venv`. |
-| `-x, --exclude <names>` | Additional directory names to skip while scanning. |
-| `--dry-run` | Preview deletion without removing anything. |
-| `--json` | Print scan results as JSON and skip the interactive TUI. |
-| `-h, --help` | Show help. |
-| `-v, --version` | Show the installed version. |
+| Option                   | Description                                                            |
+| ------------------------ | ---------------------------------------------------------------------- |
+| `-d, --directory <path>` | Search root. Defaults to the current directory.                        |
+| `-t, --targets <names>`  | Comma-separated environment directory names. Defaults to `.venv,venv`. |
+| `-x, --exclude <names>`  | Additional directory names to skip while scanning.                     |
+| `--dry-run`              | Preview deletion without removing anything.                            |
+| `--json`                 | Print scan results as JSON and skip the interactive TUI.               |
+| `-h, --help`             | Show help.                                                             |
+| `-v, --version`          | Show the installed version.                                            |
 
 ### Examples
 
@@ -261,7 +261,7 @@ If you find a directory layout that VenvSweep detects incorrectly, please open a
 
 Project landing page: **https://luan-thnh.github.io/venvsweep/**
 
-The static site source lives in [`website/`](./website/).
+The static site source lives in [`docs/`](./docs/).
 
 ## License
 
