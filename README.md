@@ -1,100 +1,268 @@
-# VenvSweep
+<p align="center">
+  <a href="https://luan-thnh.github.io/venvsweep/">
+    <img src="https://raw.githubusercontent.com/luan-thnh/venvsweep/main/website/logo.svg" width="88" height="88" alt="VenvSweep logo" />
+  </a>
+</p>
 
-Interactive CLI for finding and safely removing Python virtual environments across a workspace.
+<h1 align="center">VenvSweep</h1>
 
-Inspired by the interaction model of `npkill`, but built specifically around Python venv safety and metadata.
+<p align="center">
+  A fast, keyboard-first CLI for finding and safely removing forgotten Python virtual environments.
+</p>
 
-## Why
+<p align="center">
+  <a href="https://www.npmjs.com/package/venvsweep"><img src="https://img.shields.io/npm/v/venvsweep?style=flat-square&label=npm" alt="npm version" /></a>
+  <a href="https://www.npmjs.com/package/venvsweep"><img src="https://img.shields.io/npm/dm/venvsweep?style=flat-square" alt="npm downloads" /></a>
+  <a href="https://github.com/luan-thnh/venvsweep/blob/main/LICENSE"><img src="https://img.shields.io/npm/l/venvsweep?style=flat-square" alt="license" /></a>
+  <a href="https://www.npmjs.com/package/venvsweep"><img src="https://img.shields.io/node/v/venvsweep?style=flat-square" alt="Node version" /></a>
+</p>
 
-Python repos often accumulate `.venv`, `venv`, `.my-venv`, and other environment folders. They are reproducible, but can quietly consume many gigabytes of storage.
+<p align="center">
+  <a href="https://luan-thnh.github.io/venvsweep/"><strong>Website</strong></a>
+  ·
+  <a href="https://github.com/luan-thnh/venvsweep"><strong>GitHub</strong></a>
+  ·
+  <a href="https://www.npmjs.com/package/venvsweep"><strong>npm</strong></a>
+  ·
+  <a href="https://github.com/luan-thnh/venvsweep/issues"><strong>Issues</strong></a>
+</p>
 
-VenvSweep scans a root folder, validates candidates using `pyvenv.cfg`, shows their size and Python version, then lets you select exactly what to remove.
+---
 
-## Run locally
+Python projects tend to leave behind `.venv`, `venv`, and custom environment directories. Each one is reproducible, but together they can quietly consume gigabytes of disk space.
+
+**VenvSweep** scans a workspace, validates real Python virtual environments using `pyvenv.cfg`, shows useful metadata, and lets you choose exactly what to remove from an interactive terminal UI.
+
+Inspired by the keyboard-first cleanup flow of [`npkill`](https://github.com/voidcosmos/npkill), with safeguards and metadata designed specifically for Python virtual environments.
+
+## Features
+
+- 🔎 Scan the current directory or any workspace you choose.
+- 🐍 Detect `.venv` and `venv` by default.
+- 🧩 Add custom target names such as `.my-venv`, `env-py312`, or `backend-env`.
+- 🛡️ Validate candidates using `pyvenv.cfg` instead of deleting folders based on name alone.
+- 📦 Calculate environment size and read the Python version when available.
+- ⌨️ Navigate and multi-select entirely from the keyboard.
+- 👀 Preview results safely with `--dry-run`.
+- 🤖 Output machine-readable scan results with `--json`.
+- 🪶 Zero runtime dependencies.
+
+## Install
+
+Run it without installing globally:
 
 ```bash
-npm install
-npm run build
-node dist/cli.js --help
-```
-
-For development:
-
-```bash
-npm run dev -- ~/Developer --dry-run
-```
-
-## Usage
-
-```bash
-# current directory
 npx venvsweep
-
-# choose a workspace
-npx venvsweep ~/Developer
-
-# or explicitly
-npx venvsweep --directory ~/Developer
-
-# custom environment folder names
-npx venvsweep --targets .venv,venv,.my-venv
-
-# preview only
-npx venvsweep --dry-run
-
-# machine-readable scan output
-npx venvsweep --json
 ```
 
-## TUI keys
+Or install it globally:
 
-- `↑` / `↓` or `j` / `k`: move
-- `Space`: toggle selection
-- `A`: select/unselect all
-- `Enter`: confirm removal
-- `Q`: quit
+```bash
+npm install --global venvsweep
+venvsweep
+```
+
+> VenvSweep requires Node.js 18.18 or newer.
+
+## Quick start
+
+Scan the current directory:
+
+```bash
+npx venvsweep
+```
+
+Scan a projects workspace:
+
+```bash
+npx venvsweep ~/Developer
+```
+
+Use custom virtual-environment directory names:
+
+```bash
+npx venvsweep ~/Developer --targets .venv,venv,.my-venv
+```
+
+Preview without deleting anything:
+
+```bash
+npx venvsweep ~/Developer --dry-run
+```
+
+Get JSON output without opening the interactive TUI:
+
+```bash
+npx venvsweep ~/Developer --json
+```
+
+## Interactive controls
+
+| Key | Action |
+| --- | --- |
+| `↑` / `↓` | Move cursor |
+| `j` / `k` | Move cursor, Vim-style |
+| `Space` | Toggle the current environment |
+| `A` | Select or unselect all environments |
+| `Enter` | Continue with selected removals |
+| `Q` | Quit |
+
+The TUI uses an alternate terminal screen and keeps the visible list inside a viewport, so selecting an item does not flood or scroll your shell history.
+
+## CLI reference
+
+```text
+venvsweep [directory] [options]
+```
+
+| Option | Description |
+| --- | --- |
+| `-d, --directory <path>` | Search root. Defaults to the current directory. |
+| `-t, --targets <names>` | Comma-separated environment directory names. Defaults to `.venv,venv`. |
+| `-x, --exclude <names>` | Additional directory names to skip while scanning. |
+| `--dry-run` | Preview deletion without removing anything. |
+| `--json` | Print scan results as JSON and skip the interactive TUI. |
+| `-h, --help` | Show help. |
+| `-v, --version` | Show the installed version. |
+
+### Examples
+
+```bash
+# Current directory
+venvsweep
+
+# Explicit search root
+venvsweep --directory ~/Developer
+
+# Custom environment names
+venvsweep -d ~/Developer -t .venv,venv,.my-venv
+
+# Skip extra directories while walking the workspace
+venvsweep ~/Developer --exclude archive,generated
+
+# Safe preview
+venvsweep ~/Developer --dry-run
+
+# Script-friendly output
+venvsweep ~/Developer --json
+```
 
 ## Safety model
 
-VenvSweep does **not** delete any folder merely because its name matches a target.
+Deleting directories from a CLI deserves conservative defaults.
 
-A candidate must contain `pyvenv.cfg`, and that file is checked again immediately before removal. This helps avoid deleting an unrelated directory that happens to be named `venv`.
+VenvSweep does **not** consider a directory removable just because its name matches `.venv`, `venv`, or a custom target. A candidate must contain `pyvenv.cfg`, the file Python creates inside a virtual environment. VenvSweep validates that marker during scanning and checks it again immediately before removal. Python's own `venv` documentation describes `pyvenv.cfg` as part of the virtual-environment directory structure.
 
-Deletion also requires explicit selection and a final confirmation. Use `--dry-run` when evaluating a new workspace.
+On top of that:
 
-## MVP roadmap
+1. Nothing is selected automatically just because it was discovered.
+2. You explicitly choose environments with `Space` or `A`.
+3. VenvSweep shows the selected total before removal.
+4. A final confirmation is required.
+5. `--dry-run` is available when exploring a new workspace.
 
-- [x] `.venv` and `venv` defaults
-- [x] multiple custom targets
-- [x] choose search root
-- [x] scan size
-- [x] read Python version from `pyvenv.cfg`
-- [x] keyboard multi-select
-- [x] delete confirmation
-- [x] dry-run
-- [x] JSON scan output
-- [ ] interactive directory picker
-- [ ] live scan progress
-- [ ] sort/filter inside TUI
-- [ ] age-based filters
-- [ ] ignore file / config file
-- [ ] recycle-bin/trash mode
-- [ ] Windows polish
-- [ ] npm publish workflow
+If a directory contains important files that merely happen to resemble a virtual environment, do not select it for deletion.
 
-## Landing page
+## Default scan behavior
 
-A static landing page prototype is included at `website/index.html`. Open it directly in a browser or serve the folder with any static server.
+VenvSweep currently targets:
 
-## Publish checklist
+```text
+.venv
+venv
+```
 
-Before publishing, verify the npm package name is still available and update repository/author metadata in `package.json`.
+and skips common high-noise directories including:
+
+```text
+.git
+node_modules
+__pycache__
+```
+
+Custom targets replace the default target list for that run:
 
 ```bash
-npm install
-npm test
-npm run build
-npm pack --dry-run
-npm login
-npm publish --access public
+venvsweep --targets .venv,venv,.my-venv,python-env
 ```
+
+Additional exclusions can be appended with `--exclude`:
+
+```bash
+venvsweep --exclude dist,build,archive
+```
+
+## Development
+
+Clone the repository:
+
+```bash
+git clone https://github.com/luan-thnh/venvsweep.git
+cd venvsweep
+```
+
+Install dependencies and build:
+
+```bash
+pnpm install
+pnpm build
+```
+
+Run locally:
+
+```bash
+node dist/cli.js --help
+node dist/cli.js ~/Developer --dry-run
+```
+
+Run tests:
+
+```bash
+pnpm test
+```
+
+Inspect the npm package before publishing:
+
+```bash
+npm pack --dry-run
+```
+
+## Roadmap
+
+- [x] `.venv` and `venv` defaults
+- [x] Custom target names
+- [x] Configurable search root
+- [x] Environment size calculation
+- [x] Python version from `pyvenv.cfg`
+- [x] Keyboard multi-select
+- [x] Confirmation before removal
+- [x] `--dry-run`
+- [x] `--json`
+- [x] Fullscreen viewport-based TUI
+- [ ] Interactive directory picker
+- [ ] Live scan progress
+- [ ] Search/filter inside the TUI
+- [ ] Sorting controls
+- [ ] Persistent config / ignore file
+- [ ] Trash/recycle-bin mode
+- [ ] Additional Windows polish
+- [ ] Automated npm release workflow
+
+## Contributing
+
+Issues and pull requests are welcome.
+
+If you find a directory layout that VenvSweep detects incorrectly, please open an issue with a minimal reproducible example. Safety-related bug reports are especially valuable.
+
+- [Open an issue](https://github.com/luan-thnh/venvsweep/issues)
+- [View the source](https://github.com/luan-thnh/venvsweep)
+
+## Website
+
+Project landing page: **https://luan-thnh.github.io/venvsweep/**
+
+The static site source lives in [`website/`](./website/).
+
+## License
+
+[MIT](./LICENSE) © luan-thnh
