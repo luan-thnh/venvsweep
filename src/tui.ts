@@ -4,11 +4,13 @@ import { color as pc } from './colors.js';
 import { formatAge, formatBytes } from './format.js';
 import { removeCandidates } from './remove.js';
 import type { VenvCandidate } from './types.js';
+import { VERSION } from './version.js';
 
 interface TuiOptions {
   root: string;
   targets: string[];
   dryRun: boolean;
+  scanDurationMs: number;
 }
 
 function truncate(value: string, width: number): string {
@@ -28,9 +30,59 @@ function sumSelected(candidates: VenvCandidate[], selected: Set<number>): number
   return total;
 }
 
+function sumCandidates(candidates: VenvCandidate[]): number {
+  return candidates.reduce((sum, candidate) => sum + candidate.sizeBytes, 0);
+}
+
+function formatDuration(durationMs: number): string {
+  if (durationMs < 1_000) return `${Math.max(1, Math.round(durationMs))}ms`;
+  if (durationMs < 10_000) return `${(durationMs / 1_000).toFixed(2)}s`;
+  return `${(durationMs / 1_000).toFixed(1)}s`;
+}
+
+function buildDashboard(
+  width: number,
+  candidates: VenvCandidate[],
+  selected: Set<number>,
+  scanDurationMs: number,
+): string[] {
+  const reclaimable = sumCandidates(candidates);
+  const selectedBytes = sumSelected(candidates, selected);
+  const scanTime = formatDuration(scanDurationMs);
+
+  if (width < 96) {
+    return [
+      `${pc.bold(pc.cyan('VENV SWEEP'))} ${pc.green('~~~>')} ${pc.dim(`v${VERSION} · scan · select · sweep`)}`,
+      `${pc.dim('reclaimable')} ${pc.green(formatBytes(reclaimable))}  ${pc.dim('selected')} ${pc.yellow(formatBytes(selectedBytes))}`,
+      `${pc.dim('found')} ${pc.white(String(candidates.length))} env${candidates.length === 1 ? '' : 's'}  ${pc.dim('scan')} ${pc.cyan(scanTime)}`,
+    ];
+  }
+
+  const logo = [
+    ' __   __ ___ _  ___   __     ___ __      __ ___ ___ ___ ',
+    ' \\ \\ / /| __| \\| \\ \\ / /    / __|\\ \\    / /| __| __| _ \\',
+    '  \\ V / | _|| .| |\\ V /     \\__ \\ \\ \\/\\/ / | _|| _||  _/',
+    '   \\_/  |___|_|\\_| \\_/      |___/  \\_/\\_/  |___|___|_|  ',
+    `                    ~~~> v${VERSION} · clean envs, keep code`,
+  ];
+
+  const stats = [
+    `${pc.dim('Reclaimable')}   ${pc.green(formatBytes(reclaimable).padStart(10))}`,
+    `${pc.dim('Selected')}      ${pc.yellow(formatBytes(selectedBytes).padStart(10))}`,
+    `${pc.dim('Environments')}  ${pc.white(String(candidates.length).padStart(10))}`,
+    `${pc.dim('Scan completed')} ${pc.cyan(scanTime.padStart(9))}`,
+    pc.dim('pyvenv.cfg verified before delete'),
+  ];
+
+  const leftWidth = Math.min(66, Math.max(60, width - 34));
+  return logo.map((line, index) => {
+    const left = line.padEnd(leftWidth);
+    const coloredLeft = index === logo.length - 1 ? pc.green(left) : pc.cyan(left);
+    return `${coloredLeft}${stats[index] ?? ''}`;
+  });
+}
+
 function clearScreen(): void {
-  // Clear only the active terminal viewport. The TUI runs in the alternate
-  // screen buffer, so redraws never pollute or scroll the user's shell history.
   process.stdout.write('\x1b[H\x1b[2J');
 }
 
@@ -63,7 +115,7 @@ export async function runTui(candidates: VenvCandidate[], options: TuiOptions): 
   }
 
   if (candidates.length === 0) {
-    console.log(pc.green('✓ No Python virtual environments found.'));
+    console.log(`${pc.green('✓')} No Python virtual environments found ${pc.dim(`· ${formatDuration(options.scanDurationMs)}`)}`);
     return;
   }
 
@@ -78,15 +130,15 @@ export async function runTui(candidates: VenvCandidate[], options: TuiOptions): 
   process.stdin.resume();
 
   const render = () => {
-    const width = Math.max(72, Math.min(process.stdout.columns || 100, 120));
+    const width = Math.max(72, Math.min(process.stdout.columns || 100, 140));
     const terminalRows = Math.max(10, process.stdout.rows || 24);
     const pathWidth = Math.max(28, width - 43);
     const reclaim = sumSelected(candidates, selected);
+    const dashboard = buildDashboard(width, candidates, selected, options.scanDurationMs);
 
-    // Reserve rows for title/root/targets/header + footer. Keep one spare row so
-    // writing the frame never reaches the last terminal cell and triggers scroll.
-    const fixedRows = message ? 9 : 8;
-    const visibleCount = Math.max(1, terminalRows - fixedRows - 1);
+    const beforeListRows = dashboard.length + 4; // root + targets + spacer + table header
+    const afterListRows = 3 + (message ? 1 : 0); // spacer + controls + selection summary + message
+    const visibleCount = Math.max(1, terminalRows - beforeListRows - afterListRows - 1);
 
     if (cursor < viewportStart) {
       viewportStart = cursor;
@@ -99,7 +151,7 @@ export async function runTui(candidates: VenvCandidate[], options: TuiOptions): 
     const viewportEnd = Math.min(candidates.length, viewportStart + visibleCount);
 
     const lines: string[] = [];
-    lines.push(`${pc.bold(pc.green('VenvSweep'))} ${pc.dim('0.1.0')}`);
+    lines.push(...dashboard);
     lines.push(`${pc.dim('root')}    ${options.root}`);
     lines.push(`${pc.dim('targets')} ${options.targets.map((target) => pc.cyan(target)).join(pc.dim(', '))}`);
     lines.push('');
@@ -122,19 +174,17 @@ export async function runTui(candidates: VenvCandidate[], options: TuiOptions): 
 
     lines.push('');
     lines.push(
-      `${pc.inverse(' ↑↓/jk ')} move  ${pc.inverse(' Space ')} select  ${pc.inverse(' A ')} all  ${pc.inverse(' Enter ')} remove  ${pc.inverse(' Q ')} quit`,
+      `${pc.inverse(' ↑↓/jk ')} move  ${pc.inverse(' Space ')} select  ${pc.inverse(' A ')} all  ${pc.inverse(' Enter ')} sweep  ${pc.inverse(' Q ')} quit`,
     );
 
     const range = candidates.length > visibleCount
       ? pc.dim(` · showing ${viewportStart + 1}-${viewportEnd}/${candidates.length}`)
       : '';
     lines.push(
-      `${selected.size} selected · ${pc.green(formatBytes(reclaim))} reclaimable${options.dryRun ? pc.yellow(' · DRY RUN') : ''}${range}`,
+      `${selected.size} selected · ${pc.green(formatBytes(reclaim))} queued${options.dryRun ? pc.yellow(' · DRY RUN') : ''}${range}`,
     );
     if (message) lines.push(pc.yellow(message));
 
-    // One write, no trailing newline: prevents the terminal itself from scrolling
-    // when the cursor is sitting on the last visible row.
     process.stdout.write(`\x1b[H\x1b[2J${lines.join('\n')}`);
   };
 
@@ -142,6 +192,13 @@ export async function runTui(candidates: VenvCandidate[], options: TuiOptions): 
   render();
 
   await new Promise<void>((resolve, reject) => {
+    const cleanup = () => {
+      process.stdin.off('keypress', onKeypress);
+      if (process.stdin.isTTY) process.stdin.setRawMode(false);
+      process.stdin.pause();
+      if (!running) leaveAlternateScreen();
+    };
+
     const onKeypress = async (_str: string, key: readline.Key) => {
       try {
         message = '';
@@ -194,7 +251,7 @@ export async function runTui(candidates: VenvCandidate[], options: TuiOptions): 
           process.stdin.setRawMode(false);
           clearScreen();
 
-          const action = options.dryRun ? 'simulate removal of' : 'remove';
+          const action = options.dryRun ? 'simulate sweeping' : 'sweep';
           const accepted = await confirm(
             `About to ${action} ${chosen.length} environment(s), ${formatBytes(reclaim)} total. Continue?`,
           );
@@ -213,15 +270,13 @@ export async function runTui(candidates: VenvCandidate[], options: TuiOptions): 
           const failures = results.filter((result) => result.error);
           const removedCount = options.dryRun ? 0 : results.filter((result) => result.removed).length;
 
-          // Restore the user's normal terminal screen before printing the final
-          // result so the summary remains visible in shell history.
           running = false;
           cleanup();
 
           if (options.dryRun) {
-            console.log(pc.yellow(`Dry run complete. ${results.length} environment(s) would be removed.`));
+            console.log(pc.yellow(`Dry run complete · ${results.length} environment(s) would be swept · ${formatBytes(reclaim)} reclaimable.`));
           } else {
-            console.log(pc.green(`✓ Removed ${removedCount} environment(s).`));
+            console.log(`${pc.green('✓')} Swept ${removedCount} environment(s) · ${pc.green(formatBytes(reclaim))} reclaimed.`);
           }
 
           for (const failure of failures) {
@@ -235,13 +290,6 @@ export async function runTui(candidates: VenvCandidate[], options: TuiOptions): 
         cleanup();
         reject(error);
       }
-    };
-
-    const cleanup = () => {
-      process.stdin.off('keypress', onKeypress);
-      if (process.stdin.isTTY) process.stdin.setRawMode(false);
-      process.stdin.pause();
-      if (!running) leaveAlternateScreen();
     };
 
     process.stdin.on('keypress', onKeypress);

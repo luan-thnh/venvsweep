@@ -3,39 +3,39 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta name="theme-color" content="#080b10" />
-    <link rel="icon" href="./logo.svg" type="image/svg+xml" />
-    <meta property="og:title" content="VenvSweep — Python virtual environment cleanup" />
-    <meta
-      property="og:description"
-      content="Find and safely remove forgotten Python virtual environments from an interactive terminal UI."
-    />
-    <meta property="og:url" content="https://luan-thnh.github.io/venvsweep/" />
-    <title>VenvSweep — Find and remove forgotten Python virtual environments</title>
+    <meta name="theme-color" content="#070a0f" />
     <meta
       name="description"
-      content="VenvSweep is a fast interactive CLI for finding and removing Python virtual environments such as .venv, venv, and custom environment folders."
+      content="VenvSweep is a keyboard-first CLI for finding and safely removing forgotten Python virtual environments."
     />
+    <meta property="og:title" content="VenvSweep — Sweep stale Python environments" />
+    <meta
+      property="og:description"
+      content="Find .venv, venv, and custom Python environments. Review them, select with Space, reclaim disk space safely."
+    />
+    <meta property="og:url" content="https://luan-thnh.github.io/venvsweep/" />
+    <link rel="icon" href="./logo.svg" type="image/svg+xml" />
+    <title>VenvSweep — Sweep stale Python environments</title>
+
     <style>
       :root {
-        --bg: #080b10;
-        --bg-2: #0d1118;
-        --panel: rgba(18, 24, 33, 0.78);
-        --panel-strong: #111821;
-        --text: #f3f7fb;
-        --muted: #98a6b7;
-        --muted-2: #68778a;
-        --line: rgba(255, 255, 255, 0.09);
+        --bg: #070a0f;
+        --bg-2: #0a0f16;
+        --panel: rgba(15, 21, 30, 0.72);
+        --panel-strong: #0e151e;
+        --text: #f4f7fb;
+        --muted: #8d9caf;
+        --muted-2: #5d6c7e;
+        --line: rgba(255, 255, 255, 0.085);
+        --line-strong: rgba(255, 255, 255, 0.14);
         --green: #80f5b5;
         --green-2: #31d989;
         --blue: #75b7ff;
-        --yellow: #ffdb79;
-        --red: #ff8b8b;
-        --shadow: 0 24px 80px rgba(0, 0, 0, 0.34);
-        --radius-xl: 28px;
-        --radius-lg: 20px;
-        --radius-md: 14px;
+        --yellow: #f7d78d;
+        --danger: #ff8f97;
         --max: 1180px;
+        --mono: 'SFMono-Regular', 'Cascadia Code', 'Liberation Mono', Consolas, monospace;
+        --sans: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
       }
 
       * {
@@ -43,24 +43,32 @@
       }
       html {
         scroll-behavior: smooth;
+        background: var(--bg);
       }
       body {
         margin: 0;
         min-height: 100vh;
-        background:
-          radial-gradient(900px 560px at 50% -10%, rgba(49, 217, 137, 0.12), transparent 62%),
-          radial-gradient(640px 420px at 88% 12%, rgba(117, 183, 255, 0.08), transparent 68%), var(--bg);
-        color: var(--text);
-        font-family:
-          Inter,
-          ui-sans-serif,
-          system-ui,
-          -apple-system,
-          BlinkMacSystemFont,
-          'Segoe UI',
-          sans-serif;
-        line-height: 1.55;
         overflow-x: hidden;
+        color: var(--text);
+        font-family: var(--sans);
+        background:
+          radial-gradient(900px 500px at 50% -100px, rgba(49, 217, 137, 0.11), transparent 70%),
+          radial-gradient(700px 500px at 95% 15%, rgba(117, 183, 255, 0.075), transparent 68%), var(--bg);
+        line-height: 1.55;
+      }
+
+      body::before {
+        content: '';
+        position: fixed;
+        inset: 0;
+        z-index: -3;
+        pointer-events: none;
+        opacity: 0.26;
+        background-image:
+          linear-gradient(rgba(255, 255, 255, 0.022) 1px, transparent 1px),
+          linear-gradient(90deg, rgba(255, 255, 255, 0.022) 1px, transparent 1px);
+        background-size: 34px 34px;
+        mask-image: linear-gradient(to bottom, #000 0%, transparent 88%);
       }
 
       a {
@@ -74,43 +82,62 @@
       button {
         color: inherit;
       }
+      ::selection {
+        background: rgba(128, 245, 181, 0.24);
+        color: #fff;
+      }
 
       .shell {
         width: min(calc(100% - 32px), var(--max));
         margin: 0 auto;
       }
+      .mono {
+        font-family: var(--mono);
+      }
+      .accent {
+        color: var(--green);
+      }
 
-      .grid-bg {
+      .cursor-glow {
         position: fixed;
-        inset: 0;
+        top: 0;
+        left: 0;
+        width: 420px;
+        height: 420px;
+        z-index: -2;
         pointer-events: none;
-        opacity: 0.26;
-        background-image:
-          linear-gradient(rgba(255, 255, 255, 0.022) 1px, transparent 1px),
-          linear-gradient(90deg, rgba(255, 255, 255, 0.022) 1px, transparent 1px);
-        background-size: 32px 32px;
-        mask-image: linear-gradient(to bottom, black 0%, transparent 80%);
-        z-index: -1;
+        border-radius: 50%;
+        background: radial-gradient(
+          circle,
+          rgba(128, 245, 181, 0.075),
+          rgba(117, 183, 255, 0.025) 42%,
+          transparent 72%
+        );
+        transform: translate(-50%, -50%);
+        will-change: transform;
       }
 
       .nav {
-        position: sticky;
+        position: fixed;
         top: 14px;
-        z-index: 20;
-        margin-top: 14px;
+        left: 50%;
+        width: min(calc(100% - 28px), 920px);
+        transform: translateX(-50%);
+        z-index: 50;
       }
 
       .nav-inner {
+        min-height: 56px;
         display: flex;
         align-items: center;
         justify-content: space-between;
-        gap: 20px;
-        padding: 10px 12px 10px 16px;
+        gap: 18px;
+        padding: 8px 9px 8px 14px;
         border: 1px solid var(--line);
-        background: rgba(9, 13, 19, 0.72);
-        backdrop-filter: blur(18px);
-        border-radius: 18px;
-        box-shadow: 0 12px 40px rgba(0, 0, 0, 0.18);
+        background: rgba(8, 12, 18, 0.72);
+        backdrop-filter: blur(18px) saturate(145%);
+        border-radius: 16px;
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.28);
       }
 
       .brand {
@@ -120,606 +147,674 @@
         font-weight: 760;
         letter-spacing: -0.02em;
       }
-
-      .brand-mark {
-        width: 30px;
-        height: 30px;
-        display: grid;
-        place-items: center;
-        border-radius: 9px;
-      }
-
-      .brand-mark img {
-        width: 30px;
-        height: 30px;
+      .brand img {
+        width: 32px;
+        height: 32px;
         display: block;
+      }
+      .brand-version {
+        color: var(--muted-2);
+        font: 600 10px/1 var(--mono);
+        border: 1px solid var(--line);
+        border-radius: 999px;
+        padding: 5px 7px;
       }
 
       .nav-links {
         display: flex;
-        align-items: center;
-        gap: 24px;
+        gap: 22px;
         color: var(--muted);
-        font-size: 14px;
+        font-size: 13px;
       }
-
+      .nav-links a {
+        transition: color 0.2s ease;
+      }
       .nav-links a:hover {
         color: var(--text);
       }
 
       .button {
-        border: 1px solid var(--line);
-        min-height: 42px;
-        padding: 0 16px;
-        border-radius: 12px;
-        background: #121a24;
+        min-height: 40px;
         display: inline-flex;
         align-items: center;
         justify-content: center;
-        gap: 9px;
+        gap: 8px;
+        padding: 0 15px;
+        border: 1px solid var(--line);
+        border-radius: 11px;
+        background: rgba(255, 255, 255, 0.035);
+        color: var(--text);
+        font-weight: 690;
+        letter-spacing: -0.015em;
         cursor: pointer;
-        transition: 0.2s ease;
-        font-weight: 680;
-        letter-spacing: -0.01em;
+        transition:
+          border-color 0.2s ease,
+          background 0.2s ease,
+          transform 0.2s ease;
       }
 
       .button:hover {
-        transform: translateY(-1px);
         border-color: rgba(255, 255, 255, 0.18);
-        background: #16202c;
+        background: rgba(255, 255, 255, 0.065);
+        transform: translateY(-1px);
       }
-
       .button.primary {
-        color: #07100b;
-        background: linear-gradient(180deg, #9affc7, #6fe7a5);
-        border-color: rgba(172, 255, 207, 0.5);
-        box-shadow: 0 10px 30px rgba(49, 217, 137, 0.16);
+        border-color: rgba(128, 245, 181, 0.42);
+        background: linear-gradient(180deg, #9affc7, #6de5a2);
+        color: #06120c;
+        box-shadow: 0 12px 36px rgba(49, 217, 137, 0.15);
       }
-
       .button.primary:hover {
         background: linear-gradient(180deg, #b3ffd5, #7df0af);
       }
 
       .hero {
-        padding: 112px 0 76px;
+        position: relative;
+        min-height: 100svh;
+        display: grid;
+        place-items: center;
+        padding: 132px 0 88px;
         text-align: center;
+      }
+
+      .hero-content {
+        position: relative;
+        z-index: 2;
+        width: 100%;
+      }
+      .hero-orbit {
+        position: absolute;
+        left: 50%;
+        top: 43%;
+        width: min(78vw, 920px);
+        aspect-ratio: 1;
+        transform: translate(-50%, -50%);
+        border-radius: 50%;
+        border: 1px solid rgba(128, 245, 181, 0.07);
+        box-shadow: inset 0 0 120px rgba(128, 245, 181, 0.028);
+        pointer-events: none;
+        will-change: transform, opacity;
+      }
+      .hero-orbit::before,
+      .hero-orbit::after {
+        content: '';
+        position: absolute;
+        inset: 12%;
+        border: 1px solid rgba(117, 183, 255, 0.065);
+        border-radius: inherit;
+      }
+      .hero-orbit::after {
+        inset: 28%;
+        border-color: rgba(255, 255, 255, 0.055);
       }
 
       .eyebrow {
         width: fit-content;
-        margin: 0 auto 18px;
+        margin: 0 auto 22px;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
         padding: 7px 10px;
-        color: #c9f8dc;
-        background: rgba(49, 217, 137, 0.09);
-        border: 1px solid rgba(128, 245, 181, 0.16);
+        border: 1px solid rgba(128, 245, 181, 0.15);
         border-radius: 999px;
-        font-size: 12px;
-        font-weight: 720;
-        letter-spacing: 0.08em;
+        background: rgba(128, 245, 181, 0.065);
+        color: #c9f8dc;
+        font: 700 11px/1 var(--mono);
+        letter-spacing: 0.075em;
         text-transform: uppercase;
       }
-
-      .hero h1 {
-        max-width: 920px;
-        margin: 0 auto;
-        font-size: clamp(50px, 8vw, 92px);
-        line-height: 0.99;
-        letter-spacing: -0.067em;
-        font-weight: 820;
+      .eyebrow-dot {
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+        background: var(--green);
+        box-shadow: 0 0 14px rgba(128, 245, 181, 0.7);
       }
 
-      .hero h1 .soft {
-        color: #aab5c3;
+      .hero-title {
+        max-width: 1000px;
+        margin: 0 auto;
+        font-size: clamp(58px, 8.2vw, 108px);
+        line-height: 1.2;
+        letter-spacing: -0.072em;
+        font-weight: 840;
+      }
+      .hero-line {
+        display: block;
+        overflow: hidden;
+        padding: 0.06em 0.03em;
+        margin: -0.06em -0.03em;
+      }
+      .hero-line-inner {
+        display: block;
+        will-change: transform;
+      }
+      .hero-title .ghost {
+        color: #909dac;
         font-weight: 650;
       }
 
-      .hero p {
-        max-width: 720px;
+      .hero-copy {
+        max-width: 690px;
         margin: 28px auto 0;
         color: var(--muted);
-        font-size: clamp(17px, 2.1vw, 20px);
+        font-size: clamp(17px, 2vw, 20px);
         letter-spacing: -0.015em;
       }
 
       .hero-actions {
-        margin-top: 30px;
         display: flex;
         justify-content: center;
         gap: 10px;
         flex-wrap: wrap;
+        margin-top: 29px;
       }
 
-      .install {
-        margin: 26px auto 0;
-        width: min(100%, 470px);
+      .install-bar {
+        width: min(100%, 520px);
+        margin: 23px auto 0;
         display: flex;
         align-items: center;
         justify-content: space-between;
-        gap: 12px;
-        padding: 9px 10px 9px 15px;
+        gap: 14px;
+        padding: 9px 9px 9px 14px;
         border: 1px solid var(--line);
-        background: rgba(17, 24, 33, 0.76);
-        border-radius: 14px;
-        color: #dbe4ee;
-        box-shadow: var(--shadow);
-        font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', monospace;
-        font-size: 14px;
+        border-radius: 13px;
+        background: rgba(12, 18, 26, 0.84);
+        box-shadow: 0 28px 80px rgba(0, 0, 0, 0.32);
+        font: 13px/1.4 var(--mono);
       }
-
-      .install .prompt {
+      .install-command {
+        min-width: 0;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        color: #d8e0e9;
+      }
+      .install-command b {
         color: var(--green);
+        font-weight: 700;
       }
-      .copy-btn {
+      .copy-button {
         flex: 0 0 auto;
         border: 1px solid var(--line);
-        background: rgba(255, 255, 255, 0.04);
+        border-radius: 8px;
+        padding: 7px 9px;
+        background: rgba(255, 255, 255, 0.035);
         color: var(--muted);
-        padding: 7px 10px;
-        border-radius: 9px;
         cursor: pointer;
-      }
-      .copy-btn:hover {
-        color: var(--text);
+        font: 600 11px/1 var(--mono);
       }
 
-      .terminal-wrap {
-        position: relative;
-        padding-bottom: 118px;
+      .hero-proof {
+        margin-top: 26px;
+        display: flex;
+        justify-content: center;
+        flex-wrap: wrap;
+        gap: 16px;
+        color: var(--muted-2);
+        font: 11px/1.4 var(--mono);
       }
-
-      .terminal-glow {
-        position: absolute;
-        width: 80%;
-        height: 220px;
-        left: 10%;
-        bottom: 72px;
+      .hero-proof span {
+        display: inline-flex;
+        gap: 6px;
+        align-items: center;
+      }
+      .hero-proof i {
+        width: 5px;
+        height: 5px;
         border-radius: 50%;
-        background: rgba(49, 217, 137, 0.08);
-        filter: blur(64px);
-        z-index: -1;
+        background: var(--green);
+        opacity: 0.75;
       }
 
-      .terminal {
+      .section {
+        position: relative;
+        padding: 112px 0;
+      }
+      .section-border {
+        border-top: 1px solid rgba(255, 255, 255, 0.045);
+      }
+      .section-head {
+        max-width: 760px;
+        margin-bottom: 46px;
+      }
+      .kicker {
+        margin-bottom: 11px;
+        color: var(--green);
+        font: 650 11px/1 var(--mono);
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+      h2 {
+        margin: 0;
+        font-size: clamp(40px, 5.4vw, 68px);
+        line-height: 1;
+        letter-spacing: -0.055em;
+      }
+      .section-head p {
+        margin: 17px 0 0;
+        max-width: 650px;
+        color: var(--muted);
+        font-size: 17px;
+      }
+
+      .terminal-shell {
+        position: relative;
         overflow: hidden;
-        border: 1px solid rgba(255, 255, 255, 0.105);
-        border-radius: var(--radius-xl);
-        background: rgba(8, 12, 18, 0.93);
-        box-shadow:
-          0 42px 100px rgba(0, 0, 0, 0.48),
-          inset 0 1px rgba(255, 255, 255, 0.02);
+        border: 1px solid rgba(255, 255, 255, 0.11);
+        border-radius: 24px;
+        background: #0a1017;
+        box-shadow: 0 42px 120px rgba(0, 0, 0, 0.46);
+        transform-origin: 50% 20%;
+        will-change: transform;
+      }
+      .terminal-shell::before {
+        content: '';
+        position: absolute;
+        inset: 0;
+        pointer-events: none;
+        background: linear-gradient(120deg, rgba(255, 255, 255, 0.03), transparent 22% 74%, rgba(128, 245, 181, 0.025));
       }
 
-      .terminal-top {
-        min-height: 53px;
+      .terminal-chrome {
+        position: relative;
+        height: 52px;
         display: flex;
         align-items: center;
         justify-content: space-between;
-        padding: 0 18px;
+        padding: 0 17px;
         border-bottom: 1px solid var(--line);
-        background: #0f151e;
-        color: var(--muted);
-        font-size: 12px;
+        background: #0e151e;
+        color: var(--muted-2);
+        font: 11px/1 var(--mono);
       }
-
-      .dots {
+      .traffic {
         display: flex;
-        gap: 8px;
+        gap: 7px;
       }
-      .dot {
-        width: 10px;
-        height: 10px;
+      .traffic i {
+        width: 9px;
+        height: 9px;
         border-radius: 50%;
-        background: #2b3441;
-      }
-      .terminal-title {
-        font-family: 'SFMono-Regular', Consolas, monospace;
+        background: #2a3441;
       }
 
       .terminal-body {
+        position: relative;
         padding: 22px;
-        font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', monospace;
-        font-size: 13px;
-        text-align: left;
+        font: 12px/1.46 var(--mono);
       }
 
-      .terminal-intro {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: 16px;
-        margin-bottom: 20px;
-        color: var(--muted);
-      }
-
-      .terminal-intro strong {
-        color: var(--text);
-      }
-      .status {
-        display: inline-flex;
-        gap: 8px;
-        align-items: center;
-        color: var(--green);
-        font-size: 12px;
-      }
-      .pulse {
-        width: 7px;
-        height: 7px;
-        border-radius: 50%;
-        background: var(--green);
-        box-shadow: 0 0 16px var(--green);
-      }
-
-      .controls-grid {
+      .cli-dashboard {
         display: grid;
-        grid-template-columns: 1.3fr 1fr;
-        gap: 12px;
-        margin-bottom: 16px;
+        grid-template-columns: minmax(0, 1.2fr) minmax(250px, 0.8fr);
+        gap: 22px;
+        align-items: center;
+        padding-bottom: 19px;
+        border-bottom: 1px solid var(--line);
       }
-
-      .field {
-        min-height: 76px;
-        border: 1px solid var(--line);
-        background: rgba(255, 255, 255, 0.025);
-        border-radius: 14px;
-        padding: 12px 13px;
+      .ascii-logo {
+        margin: 0;
+        overflow: hidden;
+        color: #cbd8c6;
+        font: 700 clamp(7px, 1.05vw, 12px)/1.02 var(--mono);
+        white-space: pre;
+        letter-spacing: -0.04em;
+        text-shadow: 0 0 28px rgba(128, 245, 181, 0.08);
       }
-
-      .field-label {
-        display: block;
-        margin-bottom: 8px;
-        color: var(--muted-2);
-        font-size: 10px;
-        text-transform: uppercase;
-        letter-spacing: 0.11em;
-        font-weight: 760;
-      }
-
-      .folder-line {
+      .ascii-tagline {
+        margin-top: 10px;
         display: flex;
         align-items: center;
         gap: 8px;
-        color: #dbe4ef;
-        overflow: hidden;
+        color: var(--muted-2);
       }
-      .folder-line span:last-child {
+      .ascii-tagline b {
+        color: var(--green);
+        font-weight: 600;
+      }
+
+      .dash-stats {
+        display: grid;
+        gap: 7px;
+      }
+      .dash-stat {
+        display: grid;
+        grid-template-columns: 1fr auto;
+        gap: 16px;
+        color: var(--muted-2);
+      }
+      .dash-stat strong {
+        color: #dce7f2;
+        font-weight: 650;
+      }
+      .dash-stat .green {
+        color: var(--green);
+      }
+      .dash-stat .yellow {
+        color: var(--yellow);
+      }
+
+      .terminal-config {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 10px;
+        padding: 16px 0 12px;
+      }
+      .config-cell {
+        padding: 10px 11px;
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        background: rgba(255, 255, 255, 0.018);
+      }
+      .config-label {
+        display: block;
+        margin-bottom: 5px;
+        color: var(--muted-2);
+        font-size: 9px;
+        text-transform: uppercase;
+        letter-spacing: 0.1em;
+      }
+      .config-value {
+        color: #d6e0ea;
         white-space: nowrap;
         overflow: hidden;
         text-overflow: ellipsis;
       }
-      .folder-icon {
-        color: var(--yellow);
+      .config-value .tag {
+        color: var(--green);
       }
 
-      .tags {
-        display: flex;
-        gap: 7px;
-        flex-wrap: wrap;
-        align-items: center;
-      }
-      .tag {
-        display: inline-flex;
-        align-items: center;
-        gap: 5px;
-        padding: 5px 7px;
-        border-radius: 8px;
-        color: #cfe9da;
-        background: rgba(128, 245, 181, 0.07);
-        border: 1px solid rgba(128, 245, 181, 0.12);
-        font-size: 11px;
-      }
-
-      .target-input {
-        min-width: 88px;
-        flex: 1;
-        border: 0;
-        outline: 0;
-        color: var(--text);
-        background: transparent;
-        font-family: inherit;
-        font-size: 11px;
-      }
-      .target-input::placeholder {
-        color: #4f5d6e;
-      }
-
-      .table-head,
+      .env-head,
       .env-row {
         display: grid;
-        grid-template-columns: 34px minmax(170px, 1fr) 90px 95px 105px;
+        grid-template-columns: 28px minmax(200px, 1fr) 88px 80px 92px;
+        gap: 10px;
         align-items: center;
-        gap: 12px;
       }
-
-      .table-head {
-        min-height: 36px;
-        padding: 0 10px;
+      .env-head {
+        padding: 8px 9px;
         color: var(--muted-2);
-        font-size: 10px;
+        font-size: 9px;
+        letter-spacing: 0.085em;
         text-transform: uppercase;
-        letter-spacing: 0.09em;
-        font-weight: 720;
       }
-
       .env-list {
-        border: 1px solid var(--line);
-        border-radius: 14px;
         overflow: hidden;
+        border: 1px solid var(--line);
+        border-radius: 11px;
       }
-
       .env-row {
-        min-height: 54px;
-        padding: 0 10px;
-        color: #bcc8d5;
-        border-top: 1px solid rgba(255, 255, 255, 0.055);
+        position: relative;
+        min-height: 49px;
+        padding: 0 9px;
+        border-top: 1px solid rgba(255, 255, 255, 0.045);
+        color: #b6c2d0;
         cursor: pointer;
-        transition: background 0.14s ease;
+        transition: background 0.15s ease;
       }
-
       .env-row:first-child {
         border-top: 0;
-      }
-      .env-row:hover {
-        background: rgba(255, 255, 255, 0.025);
       }
       .env-row.active {
         background: rgba(117, 183, 255, 0.055);
       }
       .env-row.selected {
-        background: rgba(128, 245, 181, 0.05);
+        background: rgba(128, 245, 181, 0.055);
       }
-
+      .env-row.selected::before {
+        content: '';
+        position: absolute;
+        left: 0;
+        top: 0;
+        bottom: 0;
+        width: 2px;
+        background: var(--green);
+      }
       .check {
-        width: 18px;
-        height: 18px;
-        border-radius: 5px;
+        width: 17px;
+        height: 17px;
         display: grid;
         place-items: center;
-        border: 1px solid #394657;
+        border-radius: 5px;
+        border: 1px solid #354253;
         color: transparent;
-        font-size: 11px;
+        font-size: 10px;
       }
       .selected .check {
         color: #06140d;
-        border-color: var(--green);
         background: var(--green);
+        border-color: var(--green);
       }
-
-      .path {
+      .env-path {
         min-width: 0;
-        color: #e0e7ef;
         white-space: nowrap;
         overflow: hidden;
         text-overflow: ellipsis;
+        color: #dce5ee;
       }
-      .path .env-name {
+      .env-path b {
         color: var(--green);
+        font-weight: 650;
       }
-      .size {
-        color: #d9e4ee;
+      .env-size,
+      .env-age,
+      .env-python {
         text-align: right;
       }
-      .age {
-        color: var(--muted);
-        text-align: right;
-      }
-      .python {
+      .env-python {
         color: var(--blue);
-        text-align: right;
+      }
+      .env-age {
+        color: var(--muted);
       }
 
-      .terminal-bottom {
+      .terminal-footer {
         display: flex;
         align-items: center;
         justify-content: space-between;
         gap: 14px;
-        margin-top: 15px;
+        padding-top: 14px;
         flex-wrap: wrap;
       }
-
-      .keys {
+      .shortcut-row {
         display: flex;
-        gap: 10px;
+        gap: 9px;
         flex-wrap: wrap;
         color: var(--muted-2);
-        font-size: 11px;
+        font-size: 10px;
       }
-      .key {
-        color: #d7e0eb;
-        border: 1px solid rgba(255, 255, 255, 0.13);
-        background: rgba(255, 255, 255, 0.035);
-        border-radius: 6px;
-        padding: 2px 6px;
-        box-shadow: inset 0 -1px rgba(255, 255, 255, 0.04);
+      .shortcut-row kbd {
+        margin-right: 4px;
+        border: 1px solid var(--line-strong);
+        border-radius: 5px;
+        padding: 2px 5px;
+        background: rgba(255, 255, 255, 0.03);
+        color: #d6e1ec;
+        font-family: var(--mono);
+      }
+      .queued {
+        color: var(--muted);
+      }
+      .queued strong {
+        color: var(--green);
+        font-size: 13px;
       }
 
-      .reclaim {
-        display: flex;
-        align-items: center;
-        gap: 10px;
-        color: var(--muted);
-        font-size: 11px;
+      .story-grid {
+        display: grid;
+        grid-template-columns: minmax(0, 1.24fr) minmax(280px, 0.76fr);
+        gap: 34px;
+        align-items: start;
       }
-      .reclaim strong {
+      .story-terminal {
+        position: sticky;
+        top: 92px;
+      }
+      .story-copy {
+        display: grid;
+        gap: 18px;
+        padding: 24px 0 40px;
+      }
+      .story-step {
+        min-height: 210px;
+        padding: 24px;
+        border: 1px solid var(--line);
+        border-radius: 17px;
+        background: rgba(14, 20, 29, 0.58);
+        opacity: 0.52;
+        transform: translateY(18px);
+        will-change: transform, opacity;
+      }
+      .story-step-number {
         color: var(--green);
+        font: 650 10px/1 var(--mono);
+        letter-spacing: 0.08em;
+      }
+      .story-step h3 {
+        margin: 40px 0 8px;
+        font-size: 25px;
+        letter-spacing: -0.035em;
+      }
+      .story-step p {
+        margin: 0;
+        color: var(--muted);
         font-size: 14px;
       }
 
-      .section {
-        padding: 95px 0;
-        border-top: 1px solid rgba(255, 255, 255, 0.045);
-      }
-
-      .section-header {
-        max-width: 690px;
-        margin-bottom: 44px;
-      }
-
-      .kicker {
-        margin-bottom: 9px;
-        color: var(--green);
-        font-family: 'SFMono-Regular', Consolas, monospace;
-        font-size: 12px;
-      }
-
-      h2 {
-        margin: 0;
-        font-size: clamp(36px, 5vw, 58px);
-        line-height: 1.05;
-        letter-spacing: -0.048em;
-      }
-
-      .section-header p {
-        color: var(--muted);
-        font-size: 17px;
-        margin: 16px 0 0;
-      }
-
-      .feature-grid {
+      .bento {
         display: grid;
         grid-template-columns: repeat(12, 1fr);
         gap: 14px;
       }
-
-      .feature {
+      .card {
         position: relative;
         overflow: hidden;
-        min-height: 250px;
+        min-height: 240px;
         padding: 24px;
         border: 1px solid var(--line);
-        background: linear-gradient(180deg, rgba(18, 25, 35, 0.73), rgba(12, 17, 24, 0.8));
-        border-radius: var(--radius-lg);
+        border-radius: 20px;
+        background: linear-gradient(180deg, rgba(16, 23, 33, 0.72), rgba(10, 15, 22, 0.8));
+        will-change: transform, opacity;
       }
-
-      .feature.large {
+      .card::after {
+        content: '';
+        position: absolute;
+        inset: auto -20% -55% 35%;
+        height: 180px;
+        background: radial-gradient(circle, rgba(128, 245, 181, 0.09), transparent 68%);
+        pointer-events: none;
+      }
+      .card.big {
         grid-column: span 7;
       }
-      .feature.small {
+      .card.medium {
         grid-column: span 5;
       }
-      .feature.third {
+      .card.third {
         grid-column: span 4;
         min-height: 220px;
       }
-
-      .feature h3 {
-        margin: 10px 0 8px;
-        font-size: 21px;
-        letter-spacing: -0.025em;
-      }
-      .feature p {
-        margin: 0;
-        max-width: 500px;
-        color: var(--muted);
-        font-size: 14px;
-      }
-
-      .feature-icon {
+      .card-icon {
         width: 36px;
         height: 36px;
         display: grid;
         place-items: center;
-        border-radius: 10px;
-        background: rgba(128, 245, 181, 0.08);
         border: 1px solid rgba(128, 245, 181, 0.13);
+        border-radius: 10px;
+        background: rgba(128, 245, 181, 0.065);
         color: var(--green);
+        font-family: var(--mono);
       }
-
-      .pattern-demo {
-        margin-top: 28px;
-        display: flex;
-        gap: 8px;
-        flex-wrap: wrap;
-      }
-
-      .pattern-chip {
-        padding: 7px 9px;
-        border-radius: 9px;
-        border: 1px solid var(--line);
-        background: rgba(255, 255, 255, 0.026);
-        font-family: 'SFMono-Regular', Consolas, monospace;
-        font-size: 12px;
-        color: #c8d3df;
-      }
-
-      .pattern-chip.default::before {
-        content: 'default';
-        margin-right: 7px;
-        color: var(--green);
-        font-size: 9px;
-        text-transform: uppercase;
-        letter-spacing: 0.06em;
-      }
-
-      .stat-line {
-        position: absolute;
-        left: 24px;
-        right: 24px;
-        bottom: 24px;
-        height: 74px;
-        border-top: 1px solid var(--line);
-        display: flex;
-        align-items: flex-end;
-        gap: 5px;
-      }
-      .bar {
-        flex: 1;
-        border-radius: 5px 5px 2px 2px;
-        background: linear-gradient(180deg, rgba(128, 245, 181, 0.8), rgba(128, 245, 181, 0.12));
-        min-width: 8px;
-      }
-
-      .steps {
-        display: grid;
-        grid-template-columns: repeat(3, 1fr);
-        gap: 14px;
-      }
-
-      .step {
-        padding: 26px;
-        border-radius: var(--radius-lg);
-        border: 1px solid var(--line);
-        background: rgba(15, 21, 30, 0.7);
-      }
-
-      .step-num {
-        color: var(--muted-2);
-        font-family: 'SFMono-Regular', Consolas, monospace;
-        font-size: 12px;
-      }
-
-      .step h3 {
-        margin: 48px 0 8px;
+      .card h3 {
+        margin: 14px 0 8px;
         font-size: 22px;
         letter-spacing: -0.03em;
       }
-      .step p {
+      .card p {
         margin: 0;
+        max-width: 520px;
         color: var(--muted);
         font-size: 14px;
       }
 
-      .code-card {
-        margin-top: 16px;
-        border-radius: var(--radius-lg);
+      .pattern-cloud {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+        margin-top: 28px;
+      }
+      .pattern {
+        padding: 7px 9px;
         border: 1px solid var(--line);
-        background: #0d131b;
-        overflow: hidden;
+        border-radius: 8px;
+        background: rgba(255, 255, 255, 0.02);
+        color: #c5d0dc;
+        font: 11px/1 var(--mono);
+      }
+      .pattern.default {
+        border-color: rgba(128, 245, 181, 0.14);
+        color: #d8f4e3;
+      }
+      .pattern.default::before {
+        content: 'default ';
+        color: var(--green);
+        font-size: 8px;
+        text-transform: uppercase;
       }
 
+      .safe-flow {
+        display: grid;
+        gap: 9px;
+        margin-top: 25px;
+      }
+      .safe-row {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        color: #c8d2dc;
+        font: 11px/1.4 var(--mono);
+      }
+      .safe-row span:first-child {
+        width: 22px;
+        height: 22px;
+        display: grid;
+        place-items: center;
+        border-radius: 6px;
+        border: 1px solid var(--line);
+        color: var(--green);
+      }
+
+      .code-window {
+        margin-top: 46px;
+        overflow: hidden;
+        border: 1px solid var(--line);
+        border-radius: 18px;
+        background: #0a1017;
+      }
+      .code-top {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        min-height: 45px;
+        padding: 0 14px;
+        border-bottom: 1px solid var(--line);
+        color: var(--muted-2);
+        font: 10px/1 var(--mono);
+      }
+      .code-content {
+        padding: 16px 0;
+      }
       .code-line {
         display: grid;
-        grid-template-columns: 52px 1fr;
-        padding: 10px 16px 10px 0;
-        border-top: 1px solid rgba(255, 255, 255, 0.04);
-        font-family: 'SFMono-Regular', Consolas, monospace;
-        font-size: 13px;
-        color: #cbd5e1;
-      }
-      .code-line:first-child {
-        border-top: 0;
+        grid-template-columns: 50px 1fr;
+        min-height: 32px;
+        align-items: center;
+        font: 12px/1.5 var(--mono);
       }
       .ln {
-        color: #465466;
+        color: #3f4c5b;
         text-align: center;
         user-select: none;
       }
@@ -730,493 +825,515 @@
         color: var(--blue);
       }
       .comment {
-        color: #617084;
-      }
-
-      .safety {
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: 14px;
-      }
-
-      .safety-card {
-        padding: 28px;
-        border: 1px solid var(--line);
-        border-radius: var(--radius-lg);
-        background: rgba(15, 21, 30, 0.72);
-      }
-
-      .safety-card h3 {
-        margin: 11px 0 9px;
-        font-size: 23px;
-        letter-spacing: -0.03em;
-      }
-
-      .safety-card p {
-        margin: 0;
-        color: var(--muted);
+        color: #566578;
       }
 
       .cta {
-        padding: 104px 0 120px;
+        padding: 126px 0 118px;
       }
-
       .cta-box {
         position: relative;
         overflow: hidden;
-        padding: 72px 28px;
+        padding: 82px 24px;
         text-align: center;
-        border: 1px solid rgba(128, 245, 181, 0.15);
-        border-radius: 30px;
+        border: 1px solid rgba(128, 245, 181, 0.14);
+        border-radius: 28px;
         background:
-          radial-gradient(600px 220px at 50% 110%, rgba(49, 217, 137, 0.13), transparent 70%),
-          linear-gradient(180deg, rgba(20, 29, 39, 0.82), rgba(10, 15, 22, 0.96));
+          radial-gradient(620px 250px at 50% 112%, rgba(49, 217, 137, 0.15), transparent 70%),
+          linear-gradient(180deg, rgba(16, 24, 34, 0.9), rgba(9, 14, 20, 0.96));
       }
-
+      .cta-box::before {
+        content: '';
+        position: absolute;
+        inset: -45% 18% auto;
+        height: 320px;
+        background: radial-gradient(circle, rgba(117, 183, 255, 0.08), transparent 70%);
+      }
       .cta-box h2 {
-        max-width: 740px;
+        position: relative;
+        max-width: 780px;
         margin: 0 auto;
       }
       .cta-box p {
-        max-width: 600px;
+        position: relative;
+        max-width: 590px;
         margin: 17px auto 0;
         color: var(--muted);
       }
       .cta-box .hero-actions {
-        margin-top: 26px;
+        position: relative;
       }
 
       .footer {
-        padding: 28px 0 36px;
+        padding: 28px 0 38px;
         border-top: 1px solid var(--line);
         color: var(--muted-2);
-        font-size: 13px;
+        font-size: 12px;
       }
       .footer-inner {
         display: flex;
         align-items: center;
         justify-content: space-between;
-        gap: 20px;
+        gap: 18px;
         flex-wrap: wrap;
       }
-
-      .mono {
-        font-family: 'SFMono-Regular', Consolas, monospace;
+      .footer-links {
+        display: flex;
+        gap: 16px;
+      }
+      .footer-links a:hover {
+        color: var(--text);
       }
 
-      @media (max-width: 900px) {
+      @media (max-width: 920px) {
         .nav-links {
           display: none;
         }
         .hero {
-          padding-top: 92px;
+          min-height: auto;
+          padding-top: 150px;
         }
-        .controls-grid,
-        .safety {
+        .hero-orbit {
+          width: 96vw;
+        }
+        .story-grid {
           grid-template-columns: 1fr;
         }
-        .feature.large,
-        .feature.small,
-        .feature.third {
+        .story-terminal {
+          position: relative;
+          top: auto;
+        }
+        .story-copy {
+          grid-template-columns: 1fr;
+          padding-top: 8px;
+        }
+        .story-step {
+          min-height: 170px;
+          opacity: 1;
+          transform: none;
+        }
+        .card.big,
+        .card.medium,
+        .card.third {
           grid-column: span 12;
         }
-        .steps {
+        .cli-dashboard {
           grid-template-columns: 1fr;
         }
-        .step h3 {
-          margin-top: 26px;
-        }
-        .table-head,
-        .env-row {
-          grid-template-columns: 30px minmax(160px, 1fr) 72px;
-        }
-        .age,
-        .python,
-        .table-head .hide-mobile {
-          display: none;
+        .dash-stats {
+          grid-template-columns: 1fr 1fr;
         }
       }
 
-      @media (max-width: 580px) {
+      @media (max-width: 650px) {
         .shell {
           width: min(calc(100% - 20px), var(--max));
         }
-        .nav .button {
-          padding: 0 12px;
-          min-height: 38px;
+        .nav {
+          width: calc(100% - 18px);
+          top: 9px;
         }
-        .brand span:last-child {
-          font-size: 14px;
+        .brand-version {
+          display: none;
+        }
+        .nav .button {
+          min-height: 38px;
+          padding: 0 12px;
+          font-size: 13px;
         }
         .hero {
-          padding: 76px 0 58px;
+          padding: 124px 0 64px;
         }
-        .hero h1 {
-          font-size: clamp(46px, 15vw, 72px);
+        .hero-title {
+          font-size: clamp(52px, 17vw, 76px);
         }
-        .terminal-wrap {
-          padding-bottom: 82px;
+        .section {
+          padding: 80px 0;
         }
-        .terminal {
-          border-radius: 20px;
+        .terminal-shell {
+          border-radius: 17px;
         }
         .terminal-body {
           padding: 14px;
-          font-size: 11px;
+          font-size: 10px;
         }
-        .terminal-intro {
-          align-items: flex-start;
-          flex-direction: column;
+        .ascii-logo {
+          font-size: 6.8px;
         }
-        .table-head {
-          padding: 0 7px;
+        .dash-stats {
+          grid-template-columns: 1fr;
         }
+        .terminal-config {
+          grid-template-columns: 1fr;
+        }
+        .env-head,
         .env-row {
-          padding: 0 7px;
-          gap: 7px;
+          grid-template-columns: 25px minmax(145px, 1fr) 68px;
         }
-        .section {
-          padding: 72px 0;
+        .env-head span:nth-child(4),
+        .env-head span:nth-child(5),
+        .env-age,
+        .env-python {
+          display: none;
         }
-        .feature,
-        .step,
-        .safety-card {
+        .card {
           padding: 20px;
         }
+        .code-line {
+          grid-template-columns: 38px 1fr;
+          font-size: 10px;
+        }
         .cta {
-          padding: 78px 0 90px;
+          padding: 84px 0;
         }
         .cta-box {
-          padding: 56px 18px;
+          padding: 58px 18px;
         }
       }
 
       @media (prefers-reduced-motion: reduce) {
-        * {
-          scroll-behavior: auto !important;
-          transition: none !important;
+        html {
+          scroll-behavior: auto;
+        }
+        .cursor-glow {
+          display: none;
+        }
+        *,
+        *::before,
+        *::after {
+          animation-duration: 0.001ms !important;
+          animation-iteration-count: 1 !important;
+          transition-duration: 0.001ms !important;
         }
       }
     </style>
   </head>
   <body>
-    <div class="grid-bg"></div>
+    <div class="cursor-glow" aria-hidden="true"></div>
 
-    <header class="nav shell">
+    <header class="nav">
       <div class="nav-inner">
         <a class="brand" href="#top" aria-label="VenvSweep home">
-          <span class="brand-mark" aria-hidden="true">
-            <img src="./logo.svg" alt="" width="30" height="30" />
-          </span>
+          <img src="./logo.svg" alt="" />
           <span>VenvSweep</span>
+          <span class="brand-version">v0.1.2</span>
         </a>
 
         <nav class="nav-links" aria-label="Primary navigation">
+          <a href="#demo">Demo</a>
           <a href="#features">Features</a>
-          <a href="#workflow">How it works</a>
-          <a href="#safety">Safety</a>
+          <a href="#install">Install</a>
         </nav>
 
-        <a class="button" href="#install">Get started</a>
+        <a class="button" href="https://github.com/luan-thnh/venvsweep" target="_blank" rel="noreferrer">GitHub ↗</a>
       </div>
     </header>
 
     <main id="top">
       <section class="hero shell">
-        <div class="eyebrow">Python env cleanup, without the hunt</div>
-        <h1>Kill stale venvs.<br /><span class="soft">Keep your projects.</span></h1>
-        <p>
-          Find forgotten Python virtual environments across your workspace, review what they cost, select with your
-          keyboard, and remove only what you choose.
-        </p>
+        <div class="hero-orbit" aria-hidden="true"></div>
+        <div class="hero-content">
+          <div class="eyebrow hero-reveal"><span class="eyebrow-dot"></span> Python env cleanup · v0.1.2</div>
 
-        <div class="hero-actions">
-          <a class="button primary" href="#install">Run with npx</a>
-          <a class="button" href="#terminal-demo">See the TUI</a>
-        </div>
+          <h1 class="hero-title" aria-label="Sweep stale venvs. Keep your code.">
+            <span class="hero-line"><span class="hero-line-inner">Sweep stale venvs.</span></span>
+            <span class="hero-line"><span class="hero-line-inner ghost">Keep your code.</span></span>
+          </h1>
 
-        <div class="install" id="install">
-          <span><span class="prompt">$</span> npx venvsweep</span>
-          <button class="copy-btn" data-copy="npx venvsweep" aria-label="Copy install command">Copy</button>
-        </div>
-      </section>
-
-      <section class="terminal-wrap shell" id="terminal-demo">
-        <div class="terminal-glow"></div>
-        <div class="terminal" tabindex="0" aria-label="Interactive VenvSweep terminal demo">
-          <div class="terminal-top">
-            <div class="dots" aria-hidden="true">
-              <span class="dot"></span><span class="dot"></span><span class="dot"></span>
-            </div>
-            <div class="terminal-title">~/code — venvsweep</div>
-            <div>interactive demo</div>
-          </div>
-
-          <div class="terminal-body">
-            <div class="terminal-intro">
-              <div><strong>VenvSweep 0.1.1</strong> <span>— scanning workspace</span></div>
-              <div class="status"><span class="pulse"></span> 6 environments found</div>
-            </div>
-
-            <div class="controls-grid">
-              <div class="field">
-                <span class="field-label">Search root</span>
-                <div class="folder-line">
-                  <span class="folder-icon">⌁</span>
-                  <span>~/Developer</span>
-                </div>
-              </div>
-
-              <div class="field">
-                <span class="field-label">Targets</span>
-                <div class="tags" id="target-tags">
-                  <span class="tag">.venv</span>
-                  <span class="tag">venv</span>
-                  <input
-                    id="target-input"
-                    class="target-input"
-                    placeholder="+ add .my-venv"
-                    aria-label="Add target pattern"
-                  />
-                </div>
-              </div>
-            </div>
-
-            <div class="table-head" aria-hidden="true">
-              <span></span>
-              <span>Environment</span>
-              <span style="text-align: right">Size</span>
-              <span class="hide-mobile" style="text-align: right">Last used</span>
-              <span class="hide-mobile" style="text-align: right">Python</span>
-            </div>
-
-            <div class="env-list" id="env-list">
-              <div class="env-row active" data-size="1820" tabindex="0">
-                <span class="check">✓</span>
-                <span class="path">analytics-api/<span class="env-name">.venv</span></span>
-                <span class="size">1.82 GB</span>
-                <span class="age">8 months</span>
-                <span class="python">3.11.8</span>
-              </div>
-              <div class="env-row" data-size="936" tabindex="0">
-                <span class="check">✓</span>
-                <span class="path">ml-playground/<span class="env-name">venv</span></span>
-                <span class="size">936 MB</span>
-                <span class="age">5 months</span>
-                <span class="python">3.12.2</span>
-              </div>
-              <div class="env-row selected" data-size="2410" tabindex="0">
-                <span class="check">✓</span>
-                <span class="path">vision-lab/<span class="env-name">.my-venv</span></span>
-                <span class="size">2.41 GB</span>
-                <span class="age">11 months</span>
-                <span class="python">3.10.13</span>
-              </div>
-              <div class="env-row" data-size="624" tabindex="0">
-                <span class="check">✓</span>
-                <span class="path">tiny-tools/<span class="env-name">.venv</span></span>
-                <span class="size">624 MB</span>
-                <span class="age">2 months</span>
-                <span class="python">3.13.1</span>
-              </div>
-              <div class="env-row selected" data-size="1280" tabindex="0">
-                <span class="check">✓</span>
-                <span class="path">archive/old-bot/<span class="env-name">venv</span></span>
-                <span class="size">1.28 GB</span>
-                <span class="age">1.4 years</span>
-                <span class="python">3.9.18</span>
-              </div>
-              <div class="env-row" data-size="388" tabindex="0">
-                <span class="check">✓</span>
-                <span class="path">scraper-next/<span class="env-name">.venv</span></span>
-                <span class="size">388 MB</span>
-                <span class="age">3 weeks</span>
-                <span class="python">3.12.6</span>
-              </div>
-            </div>
-
-            <div class="terminal-bottom">
-              <div class="keys">
-                <span><span class="key">↑↓</span> move</span>
-                <span><span class="key">Space</span> select</span>
-                <span><span class="key">A</span> all</span>
-                <span><span class="key">Enter</span> remove</span>
-                <span><span class="key">/</span> filter</span>
-              </div>
-              <div class="reclaim">
-                selected <span id="selected-count">2</span>
-                <strong id="reclaim-size">3.69 GB reclaimable</strong>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <section class="section shell" id="features">
-        <div class="section-header">
-          <div class="kicker">01 / Built for messy Python workspaces</div>
-          <h2>Your env folder doesn't have to be called <span class="mono">.venv</span>.</h2>
-          <p>
-            VenvSweep starts with sensible defaults, then lets every team or developer add the folder names they
-            actually use.
+          <p class="hero-copy hero-reveal">
+            A keyboard-first CLI that finds forgotten <span class="mono">.venv</span>, <span class="mono">venv</span>,
+            and custom Python environments — then removes only what you explicitly select.
           </p>
-        </div>
 
-        <div class="feature-grid">
-          <article class="feature large">
-            <div class="feature-icon">⌕</div>
-            <h3>Auto-detect common virtual environments</h3>
-            <p>
-              Scan from the current directory or choose a root folder. Detect <span class="mono">.venv</span> and
-              <span class="mono">venv</span> out of the box, with room for project-specific names.
-            </p>
-            <div class="pattern-demo">
-              <span class="pattern-chip default">.venv</span>
-              <span class="pattern-chip default">venv</span>
-              <span class="pattern-chip">.my-venv</span>
-              <span class="pattern-chip">env-py312</span>
-              <span class="pattern-chip">backend-env</span>
-            </div>
-          </article>
-
-          <article class="feature small">
-            <div class="feature-icon">↯</div>
-            <h3>See the storage cost first</h3>
-            <p>
-              Surface environment size, path, Python version, and recency so old 2 GB environments stop hiding inside
-              forgotten side projects.
-            </p>
-            <div class="stat-line" aria-hidden="true">
-              <span class="bar" style="height: 24%"></span>
-              <span class="bar" style="height: 46%"></span>
-              <span class="bar" style="height: 33%"></span>
-              <span class="bar" style="height: 72%"></span>
-              <span class="bar" style="height: 55%"></span>
-              <span class="bar" style="height: 92%"></span>
-              <span class="bar" style="height: 38%"></span>
-              <span class="bar" style="height: 66%"></span>
-            </div>
-          </article>
-
-          <article class="feature third">
-            <div class="feature-icon">⌨</div>
-            <h3>Keyboard-first</h3>
-            <p>Move with arrows or j/k, toggle items with Space, select all with A, then confirm once.</p>
-          </article>
-
-          <article class="feature third">
-            <div class="feature-icon">⌁</div>
-            <h3>Pick the scan root</h3>
-            <p>Start where you are, pass a directory flag, or interactively choose a projects folder.</p>
-          </article>
-
-          <article class="feature third">
-            <div class="feature-icon">◌</div>
-            <h3>Fast re-creation mindset</h3>
-            <p>Only target regenerable virtual environments. Keep source files and project manifests untouched.</p>
-          </article>
-        </div>
-      </section>
-
-      <section class="section shell" id="workflow">
-        <div class="section-header">
-          <div class="kicker">02 / Three steps</div>
-          <h2>Scan. Select. Sweep.</h2>
-          <p>Minimal commands, visible consequences, and no need to manually crawl every repository.</p>
-        </div>
-
-        <div class="steps">
-          <article class="step">
-            <div class="step-num">01</div>
-            <h3>Choose where to look</h3>
-            <p>Run in the current folder or point VenvSweep at a workspace containing many Python projects.</p>
-          </article>
-          <article class="step">
-            <div class="step-num">02</div>
-            <h3>Review the candidates</h3>
-            <p>Sort or filter the detected environments, then use Space to build your cleanup selection.</p>
-          </article>
-          <article class="step">
-            <div class="step-num">03</div>
-            <h3>Confirm the removal</h3>
-            <p>Press Enter, review the total reclaimable storage, and confirm before anything is deleted.</p>
-          </article>
-        </div>
-
-        <div class="code-card">
-          <div class="code-line">
-            <span class="ln">1</span><span><span class="comment"># scan the current folder</span></span>
+          <div class="hero-actions hero-reveal">
+            <a class="button primary" href="#install">Run with npx</a>
+            <a class="button" href="#demo">Watch the sweep ↓</a>
           </div>
-          <div class="code-line">
-            <span class="ln">2</span><span><span class="cmd">npx venvsweep</span></span>
+
+          <div class="install-bar hero-reveal">
+            <div class="install-command"><b>$</b> npx venvsweep</div>
+            <button class="copy-button" data-copy="npx venvsweep">COPY</button>
           </div>
-          <div class="code-line"><span class="ln">3</span><span>&nbsp;</span></div>
-          <div class="code-line">
-            <span class="ln">4</span><span><span class="comment"># scan a workspace</span></span>
-          </div>
-          <div class="code-line">
-            <span class="ln">5</span
-            ><span><span class="cmd">npx venvsweep</span> <span class="arg">~/Developer</span></span>
-          </div>
-          <div class="code-line"><span class="ln">6</span><span>&nbsp;</span></div>
-          <div class="code-line">
-            <span class="ln">7</span><span><span class="comment"># add custom environment folder names</span></span>
-          </div>
-          <div class="code-line">
-            <span class="ln">8</span
-            ><span><span class="cmd">npx venvsweep</span> <span class="arg">--targets .venv,venv,.my-venv</span></span>
-          </div>
-          <div class="code-line"><span class="ln">9</span><span>&nbsp;</span></div>
-          <div class="code-line">
-            <span class="ln">10</span><span><span class="comment"># preview only — never delete</span></span>
-          </div>
-          <div class="code-line">
-            <span class="ln">11</span
-            ><span><span class="cmd">npx venvsweep</span> <span class="arg">--dry-run</span></span>
+
+          <div class="hero-proof hero-reveal">
+            <span><i></i> zero runtime dependencies</span>
+            <span><i></i> validates pyvenv.cfg</span>
+            <span><i></i> keyboard-first TUI</span>
           </div>
         </div>
       </section>
 
-      <section class="section shell" id="safety">
-        <div class="section-header">
-          <div class="kicker">03 / Deletion needs guardrails</div>
-          <h2>Fast cleanup shouldn't mean reckless cleanup.</h2>
+      <section class="section section-border" id="demo">
+        <div class="shell">
+          <div class="section-head reveal-block">
+            <div class="kicker">01 / The sweep</div>
+            <h2>See what is disposable <em style="font-style: normal; color: #8896a6">before</em> deleting it.</h2>
+            <p>
+              Scroll through the workflow. The terminal preview follows the same mental model as the CLI: scan, review,
+              select, confirm.
+            </p>
+          </div>
+
+          <div class="story-grid">
+            <div class="story-terminal">
+              <div
+                class="terminal-shell"
+                id="terminal-demo"
+                tabindex="0"
+                aria-label="Interactive VenvSweep terminal demo"
+              >
+                <div class="terminal-chrome">
+                  <div class="traffic" aria-hidden="true"><i></i><i></i><i></i></div>
+                  <span>~/Developer — venvsweep</span>
+                  <span>v0.1.2</span>
+                </div>
+
+                <div class="terminal-body">
+                  <div class="cli-dashboard">
+                    <div>
+                      <pre class="ascii-logo" aria-hidden="true">
+__      __                  _____
+\ \    / /__ _ _  __ __   / ___/____ _____ ___  ___
+ \ \/\/ / -_) ' \/ // /   \__ \/ __ `/ __ `__ \/ _ \
+  \_/\_/\__/_||_/\_,_/   /____/\__,_/_/ /_/ /_/ .__/
+                                               /_/</pre
+                      >
+                      <div class="ascii-tagline"><b>~~~&gt;</b> clean envs, keep code</div>
+                    </div>
+
+                    <div class="dash-stats">
+                      <div class="dash-stat"><span>Reclaimable</span><strong id="stat-reclaim">7.46 GB</strong></div>
+                      <div class="dash-stat">
+                        <span>Selected</span><strong class="green" id="stat-selected">0 B</strong>
+                      </div>
+                      <div class="dash-stat"><span>Environments</span><strong>6</strong></div>
+                      <div class="dash-stat"><span>Scan completed</span><strong class="yellow">1.84s</strong></div>
+                    </div>
+                  </div>
+
+                  <div class="terminal-config">
+                    <div class="config-cell">
+                      <span class="config-label">Search root</span><span class="config-value">~/Developer</span>
+                    </div>
+                    <div class="config-cell">
+                      <span class="config-label">Targets</span
+                      ><span class="config-value"
+                        ><span class="tag">.venv</span>, <span class="tag">venv</span>,
+                        <span class="tag">.my-venv</span></span
+                      >
+                    </div>
+                  </div>
+
+                  <div class="env-head" aria-hidden="true">
+                    <span></span><span>Environment</span><span style="text-align: right">Size</span
+                    ><span style="text-align: right">Age</span><span style="text-align: right">Python</span>
+                  </div>
+                  <div class="env-list">
+                    <div class="env-row active" data-size="1820">
+                      <span class="check">✓</span><span class="env-path">analytics-api/<b>.venv</b></span
+                      ><span class="env-size">1.82 GB</span><span class="env-age">8mo</span
+                      ><span class="env-python">3.11.8</span>
+                    </div>
+                    <div class="env-row" data-size="936">
+                      <span class="check">✓</span><span class="env-path">ml-playground/<b>venv</b></span
+                      ><span class="env-size">936 MB</span><span class="env-age">5mo</span
+                      ><span class="env-python">3.12.2</span>
+                    </div>
+                    <div class="env-row" data-size="2410">
+                      <span class="check">✓</span><span class="env-path">vision-lab/<b>.my-venv</b></span
+                      ><span class="env-size">2.41 GB</span><span class="env-age">11mo</span
+                      ><span class="env-python">3.10.13</span>
+                    </div>
+                    <div class="env-row" data-size="624">
+                      <span class="check">✓</span><span class="env-path">tiny-tools/<b>.venv</b></span
+                      ><span class="env-size">624 MB</span><span class="env-age">2mo</span
+                      ><span class="env-python">3.13.1</span>
+                    </div>
+                    <div class="env-row" data-size="1280">
+                      <span class="check">✓</span><span class="env-path">archive/old-bot/<b>venv</b></span
+                      ><span class="env-size">1.28 GB</span><span class="env-age">1.4y</span
+                      ><span class="env-python">3.9.18</span>
+                    </div>
+                    <div class="env-row" data-size="388">
+                      <span class="check">✓</span><span class="env-path">scraper-next/<b>.venv</b></span
+                      ><span class="env-size">388 MB</span><span class="env-age">3w</span
+                      ><span class="env-python">3.12.6</span>
+                    </div>
+                  </div>
+
+                  <div class="terminal-footer">
+                    <div class="shortcut-row">
+                      <span><kbd>↑↓</kbd>move</span><span><kbd>Space</kbd>select</span><span><kbd>A</kbd>all</span
+                      ><span><kbd>Enter</kbd>sweep</span><span><kbd>Q</kbd>quit</span>
+                    </div>
+                    <div class="queued">
+                      <span id="selected-count">0</span> selected · <strong id="queued-size">0 B queued</strong>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="story-copy">
+              <article class="story-step" data-story-step="0">
+                <div class="story-step-number">01 · SCAN</div>
+                <h3>Point it at a workspace.</h3>
+                <p>
+                  Start from the current directory or pass a root. Defaults find <span class="mono">.venv</span> and
+                  <span class="mono">venv</span>; custom target names are first-class.
+                </p>
+              </article>
+              <article class="story-step" data-story-step="1">
+                <div class="story-step-number">02 · REVIEW</div>
+                <h3>Size first. Path visible.</h3>
+                <p>
+                  VenvSweep surfaces the actual storage cost, Python version, age, and path so the decision is informed
+                  instead of blind.
+                </p>
+              </article>
+              <article class="story-step" data-story-step="2">
+                <div class="story-step-number">03 · SELECT</div>
+                <h3><span class="mono">Space</span> builds the sweep queue.</h3>
+                <p>
+                  Nothing is deleted just because it was discovered. Select one or many environments and watch the
+                  queued space update instantly.
+                </p>
+              </article>
+              <article class="story-step" data-story-step="3">
+                <div class="story-step-number">04 · VERIFY</div>
+                <h3>Re-check before removal.</h3>
+                <p>
+                  Each candidate is validated through <span class="mono">pyvenv.cfg</span> again before deletion,
+                  reducing the chance of removing an unrelated folder with the same name.
+                </p>
+              </article>
+            </div>
+          </div>
         </div>
+      </section>
 
-        <div class="safety">
-          <article class="safety-card">
-            <div class="feature-icon">✓</div>
-            <h3>Explicit selection</h3>
+      <section class="section section-border" id="features">
+        <div class="shell">
+          <div class="section-head reveal-block">
+            <div class="kicker">02 / Designed for real Python repos</div>
+            <h2>Opinionated defaults. Flexible targets.</h2>
             <p>
-              No environment is removed just because it was found. VenvSweep makes the user select candidates first and
-              shows the total space before confirmation.
+              Virtual environments rarely follow one naming convention forever. VenvSweep embraces that without turning
+              cleanup into a dangerous wildcard search.
             </p>
-          </article>
+          </div>
 
-          <article class="safety-card">
-            <div class="feature-icon">◎</div>
-            <h3>Dry-run friendly</h3>
-            <p>
-              Add a preview mode for scripts and CI, plus exclusions for directories that should never be traversed or
-              deleted.
-            </p>
-          </article>
+          <div class="bento">
+            <article class="card big reveal-card">
+              <div class="card-icon">⌕</div>
+              <h3>Auto-detect the obvious ones.</h3>
+              <p>Common names work immediately, while custom names can be added explicitly per run.</p>
+              <div class="pattern-cloud">
+                <span class="pattern default">.venv</span>
+                <span class="pattern default">venv</span>
+                <span class="pattern">.my-venv</span>
+                <span class="pattern">env-py312</span>
+                <span class="pattern">backend-env</span>
+              </div>
+            </article>
+
+            <article class="card medium reveal-card">
+              <div class="card-icon">◎</div>
+              <h3>Safety is part of discovery.</h3>
+              <p>
+                A matching folder name is not enough. VenvSweep validates Python virtual-environment metadata before
+                treating a directory as removable.
+              </p>
+              <div class="safe-flow">
+                <div class="safe-row"><span>1</span> target name matches</div>
+                <div class="safe-row"><span>2</span> pyvenv.cfg exists</div>
+                <div class="safe-row"><span>3</span> user explicitly selects</div>
+                <div class="safe-row"><span>4</span> validate again → remove</div>
+              </div>
+            </article>
+
+            <article class="card third reveal-card">
+              <div class="card-icon">⌨</div>
+              <h3>Keyboard-first</h3>
+              <p>
+                Move with arrows or <span class="mono">j/k</span>, toggle with <span class="mono">Space</span>, select
+                all with <span class="mono">A</span>, then confirm.
+              </p>
+            </article>
+
+            <article class="card third reveal-card">
+              <div class="card-icon">↯</div>
+              <h3>Reclaimable space</h3>
+              <p>
+                See environment sizes before deleting and keep a running total of what your current selection will
+                recover.
+              </p>
+            </article>
+
+            <article class="card third reveal-card">
+              <div class="card-icon">{ }</div>
+              <h3>Script-friendly</h3>
+              <p>
+                Use <span class="mono">--dry-run</span> and <span class="mono">--json</span> when you want
+                machine-readable discovery without interactive deletion.
+              </p>
+            </article>
+          </div>
+
+          <div class="code-window reveal-block" id="install">
+            <div class="code-top"><span>quick-start.sh</span><span>Node.js 22+</span></div>
+            <div class="code-content">
+              <div class="code-line">
+                <span class="ln">1</span><span><span class="comment"># scan current directory</span></span>
+              </div>
+              <div class="code-line">
+                <span class="ln">2</span><span><span class="cmd">npx venvsweep</span></span>
+              </div>
+              <div class="code-line"><span class="ln">3</span><span>&nbsp;</span></div>
+              <div class="code-line">
+                <span class="ln">4</span><span><span class="comment"># scan a workspace</span></span>
+              </div>
+              <div class="code-line">
+                <span class="ln">5</span
+                ><span><span class="cmd">npx venvsweep</span> <span class="arg">~/Developer</span></span>
+              </div>
+              <div class="code-line"><span class="ln">6</span><span>&nbsp;</span></div>
+              <div class="code-line">
+                <span class="ln">7</span><span><span class="comment"># custom environment names</span></span>
+              </div>
+              <div class="code-line">
+                <span class="ln">8</span
+                ><span
+                  ><span class="cmd">npx venvsweep</span> <span class="arg">--targets .venv,venv,.my-venv</span></span
+                >
+              </div>
+              <div class="code-line"><span class="ln">9</span><span>&nbsp;</span></div>
+              <div class="code-line">
+                <span class="ln">10</span><span><span class="comment"># preview only</span></span>
+              </div>
+              <div class="code-line">
+                <span class="ln">11</span
+                ><span><span class="cmd">npx venvsweep</span> <span class="arg">--dry-run</span></span>
+              </div>
+            </div>
+          </div>
         </div>
       </section>
 
       <section class="cta shell">
-        <div class="cta-box">
-          <div class="eyebrow">Open-source developer tool</div>
-          <h2>Stop carrying gigabytes of Python environments you forgot existed.</h2>
+        <div class="cta-box reveal-block">
+          <div class="eyebrow"><span class="eyebrow-dot"></span> Open source · MIT</div>
+          <h2>Stop carrying gigabytes of environments you forgot existed.</h2>
           <p>
-            One interactive command for <span class="mono">.venv</span>, <span class="mono">venv</span>, and every
-            custom name your projects have accumulated.
+            Run one command, review the candidates, and sweep only what you choose. VenvSweep v0.1.2 is available on
+            npm.
           </p>
           <div class="hero-actions">
-            <button class="button primary copy-run" data-copy="npx venvsweep">Copy npx command</button>
+            <button class="button primary" data-copy="npx venvsweep">Copy npx command</button>
             <a class="button" href="https://github.com/luan-thnh/venvsweep" target="_blank" rel="noreferrer"
-              >View on GitHub</a
+              >View source ↗</a
             >
+            <a class="button" href="https://www.npmjs.com/package/venvsweep" target="_blank" rel="noreferrer">npm ↗</a>
           </div>
         </div>
       </section>
@@ -1224,95 +1341,220 @@
 
     <footer class="footer">
       <div class="shell footer-inner">
-        <span>VenvSweep — safely sweep stale Python environments.</span>
-        <span class="mono">MIT · TypeScript · npm</span>
+        <span><span class="accent">VenvSweep</span> v0.1.2 · clean envs, keep code.</span>
+        <div class="footer-links">
+          <a href="https://luan-thnh.github.io/venvsweep/">Website</a>
+          <a href="https://github.com/luan-thnh/venvsweep">GitHub</a>
+          <a href="https://www.npmjs.com/package/venvsweep">npm</a>
+        </div>
       </div>
     </footer>
 
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.13.0/dist/gsap.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.13.0/dist/ScrollTrigger.min.js"></script>
     <script>
-      const rows = Array.from(document.querySelectorAll('.env-row'));
-      const reclaimSize = document.getElementById('reclaim-size');
-      const selectedCount = document.getElementById('selected-count');
-      const terminal = document.querySelector('.terminal');
-      let activeIndex = 0;
+      (() => {
+        const rows = Array.from(document.querySelectorAll('.env-row'));
+        const terminal = document.querySelector('#terminal-demo');
+        const selectedStat = document.querySelector('#stat-selected');
+        const selectedCount = document.querySelector('#selected-count');
+        const queuedSize = document.querySelector('#queued-size');
+        let activeIndex = 0;
 
-      function formatMB(mb) {
-        return mb >= 1000 ? (mb / 1000).toFixed(2) + ' GB reclaimable' : mb + ' MB reclaimable';
-      }
+        const formatMB = (mb) => {
+          if (!mb) return '0 B';
+          return mb >= 1000 ? `${(mb / 1000).toFixed(2)} GB` : `${mb} MB`;
+        };
 
-      function updateSelection() {
-        const selected = rows.filter((r) => r.classList.contains('selected'));
-        const total = selected.reduce((sum, row) => sum + Number(row.dataset.size), 0);
-        selectedCount.textContent = selected.length;
-        reclaimSize.textContent = formatMB(total);
-      }
-
-      function setActive(index) {
-        rows.forEach((r) => r.classList.remove('active'));
-        activeIndex = (index + rows.length) % rows.length;
-        rows[activeIndex].classList.add('active');
-        rows[activeIndex].scrollIntoView({ block: 'nearest' });
-      }
-
-      function toggleRow(row) {
-        row.classList.toggle('selected');
-        updateSelection();
-      }
-
-      rows.forEach((row, index) => {
-        row.addEventListener('click', () => {
-          setActive(index);
-          toggleRow(row);
-          terminal.focus();
-        });
-        row.addEventListener('focus', () => setActive(index));
-      });
-
-      terminal.addEventListener('keydown', (event) => {
-        const key = event.key.toLowerCase();
-        if (['arrowdown', 'arrowup', ' ', 'j', 'k', 'a'].includes(key)) {
-          event.preventDefault();
+        function updateSelection() {
+          const selected = rows.filter((row) => row.classList.contains('selected'));
+          const total = selected.reduce((sum, row) => sum + Number(row.dataset.size), 0);
+          selectedStat.textContent = formatMB(total);
+          selectedCount.textContent = String(selected.length);
+          queuedSize.textContent = `${formatMB(total)} queued`;
         }
-        if (key === 'arrowdown' || key === 'j') setActive(activeIndex + 1);
-        if (key === 'arrowup' || key === 'k') setActive(activeIndex - 1);
-        if (key === ' ') toggleRow(rows[activeIndex]);
-        if (key === 'a') {
-          const shouldSelect = rows.some((r) => !r.classList.contains('selected'));
-          rows.forEach((r) => r.classList.toggle('selected', shouldSelect));
+
+        function setActive(index) {
+          rows.forEach((row) => row.classList.remove('active'));
+          activeIndex = (index + rows.length) % rows.length;
+          rows[activeIndex].classList.add('active');
+        }
+
+        function setSelected(index, selected) {
+          rows[index]?.classList.toggle('selected', selected);
           updateSelection();
         }
-      });
 
-      document.querySelectorAll('[data-copy]').forEach((button) => {
-        button.addEventListener('click', async () => {
-          const value = button.dataset.copy;
-          try {
-            await navigator.clipboard.writeText(value);
-            const previous = button.textContent;
-            button.textContent = 'Copied';
-            setTimeout(() => (button.textContent = previous), 1300);
-          } catch {
-            button.textContent = value;
+        function toggleSelected(index) {
+          rows[index]?.classList.toggle('selected');
+          updateSelection();
+        }
+
+        rows.forEach((row, index) => {
+          row.addEventListener('click', () => {
+            setActive(index);
+            toggleSelected(index);
+            terminal.focus({ preventScroll: true });
+          });
+        });
+
+        terminal.addEventListener('keydown', (event) => {
+          const key = event.key.toLowerCase();
+          if (['arrowdown', 'arrowup', ' ', 'j', 'k', 'a'].includes(key)) event.preventDefault();
+          if (key === 'arrowdown' || key === 'j') setActive(activeIndex + 1);
+          if (key === 'arrowup' || key === 'k') setActive(activeIndex - 1);
+          if (key === ' ') toggleSelected(activeIndex);
+          if (key === 'a') {
+            const shouldSelect = rows.some((row) => !row.classList.contains('selected'));
+            rows.forEach((row) => row.classList.toggle('selected', shouldSelect));
+            updateSelection();
           }
         });
-      });
 
-      const targetInput = document.getElementById('target-input');
-      const tags = document.getElementById('target-tags');
-      targetInput.addEventListener('keydown', (event) => {
-        if (event.key === 'Enter') {
-          event.preventDefault();
-          const value = targetInput.value.trim();
-          if (!value) return;
-          const tag = document.createElement('span');
-          tag.className = 'tag';
-          tag.textContent = value;
-          tags.insertBefore(tag, targetInput);
-          targetInput.value = '';
+        document.querySelectorAll('[data-copy]').forEach((button) => {
+          button.addEventListener('click', async () => {
+            const text = button.dataset.copy;
+            const old = button.textContent;
+            try {
+              await navigator.clipboard.writeText(text);
+              button.textContent = 'Copied ✓';
+            } catch {
+              button.textContent = text;
+            }
+            setTimeout(() => {
+              button.textContent = old;
+            }, 1300);
+          });
+        });
+
+        updateSelection();
+
+        if (!window.gsap || !window.ScrollTrigger) return;
+        gsap.registerPlugin(ScrollTrigger);
+
+        const mm = gsap.matchMedia();
+
+        mm.add(
+          {
+            motion: '(prefers-reduced-motion: no-preference)',
+            desktop: '(min-width: 921px)',
+          },
+          (context) => {
+            const { motion, desktop } = context.conditions;
+            if (!motion) return;
+
+            const intro = gsap.timeline({ defaults: { ease: 'power3.out' } });
+            intro
+              .from('.nav', { y: -24, autoAlpha: 0, duration: 0.65 })
+              .from('.hero-orbit', { scale: 0.72, autoAlpha: 0, duration: 1.15 }, 0)
+              .from('.hero-line-inner', { yPercent: 112, duration: 0.95, stagger: 0.1 }, 0.08)
+              .from('.hero-reveal', { y: 18, autoAlpha: 0, duration: 0.62, stagger: 0.08 }, 0.36);
+
+            gsap.to('.hero-orbit', {
+              rotation: 18,
+              scale: 1.06,
+              ease: 'none',
+              scrollTrigger: {
+                trigger: '.hero',
+                start: 'top top',
+                end: 'bottom top',
+                scrub: 1,
+              },
+            });
+
+            gsap.utils.toArray('.reveal-block').forEach((el) => {
+              gsap.from(el, {
+                y: 42,
+                autoAlpha: 0,
+                duration: 0.85,
+                ease: 'power3.out',
+                scrollTrigger: { trigger: el, start: 'top 84%', toggleActions: 'play none none reverse' },
+              });
+            });
+
+            gsap.from('.reveal-card', {
+              y: 42,
+              autoAlpha: 0,
+              duration: 0.8,
+              stagger: 0.09,
+              ease: 'power3.out',
+              scrollTrigger: { trigger: '.bento', start: 'top 80%', toggleActions: 'play none none reverse' },
+            });
+
+            if (desktop) {
+              const steps = gsap.utils.toArray('.story-step');
+              steps.forEach((step, index) => {
+                ScrollTrigger.create({
+                  trigger: step,
+                  start: 'top 60%',
+                  end: 'bottom 42%',
+                  onEnter: () => activateStory(index),
+                  onEnterBack: () => activateStory(index),
+                });
+              });
+
+              gsap.fromTo(
+                '.terminal-shell',
+                { scale: 0.965, rotationX: 2.2, transformPerspective: 1200 },
+                {
+                  scale: 1,
+                  rotationX: 0,
+                  ease: 'none',
+                  scrollTrigger: {
+                    trigger: '.story-grid',
+                    start: 'top 72%',
+                    end: 'bottom 32%',
+                    scrub: 1,
+                  },
+                },
+              );
+            }
+
+            const glow = document.querySelector('.cursor-glow');
+            if (glow && window.matchMedia('(pointer:fine)').matches) {
+              const xTo = gsap.quickTo(glow, 'x', { duration: 0.55, ease: 'power3' });
+              const yTo = gsap.quickTo(glow, 'y', { duration: 0.55, ease: 'power3' });
+              window.addEventListener(
+                'pointermove',
+                (event) => {
+                  xTo(event.clientX);
+                  yTo(event.clientY);
+                },
+                { passive: true },
+              );
+            }
+          },
+        );
+
+        function activateStory(index) {
+          const steps = Array.from(document.querySelectorAll('.story-step'));
+          gsap.to(steps, { autoAlpha: 0.52, y: 18, duration: 0.32, overwrite: 'auto' });
+          gsap.to(steps[index], { autoAlpha: 1, y: 0, duration: 0.4, overwrite: 'auto' });
+
+          if (index === 0) {
+            rows.forEach((row) => row.classList.remove('selected'));
+            setActive(0);
+          } else if (index === 1) {
+            rows.forEach((row) => row.classList.remove('selected'));
+            setActive(2);
+          } else if (index === 2) {
+            rows.forEach((row) => row.classList.remove('selected'));
+            setSelected(0, true);
+            setSelected(2, true);
+            setSelected(4, true);
+            setActive(4);
+          } else {
+            rows.forEach((row) => row.classList.remove('selected'));
+            setSelected(0, true);
+            setSelected(2, true);
+            setSelected(4, true);
+            setActive(4);
+          }
+          updateSelection();
         }
-      });
 
-      updateSelection();
+        window.addEventListener('load', () => ScrollTrigger.refresh(), { once: true });
+      })();
     </script>
   </body>
 </html>

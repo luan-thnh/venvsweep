@@ -42,6 +42,7 @@ Inspired by the keyboard-first cleanup flow of [`npkill`](https://github.com/voi
 - 🧩 Add custom target names such as `.my-venv`, `env-py312`, or `backend-env`.
 - 🛡️ Validate candidates using `pyvenv.cfg` instead of deleting folders based on name alone.
 - 📦 Calculate environment size and read the Python version when available.
+- 📊 Live TUI dashboard for reclaimable space, selected space, environment count, and scan time.
 - ⌨️ Navigate and multi-select entirely from the keyboard.
 - 👀 Preview results safely with `--dry-run`.
 - 🤖 Output machine-readable scan results with `--json`.

@@ -1,13 +1,12 @@
 #!/usr/bin/env node
 
+import { performance } from 'node:perf_hooks';
 import { color as pc } from './colors.js';
 import { parseArgs } from './args.js';
-import { formatBytes } from './format.js';
 import { helpText } from './help.js';
 import { scanForVenvs } from './scan.js';
 import { runTui } from './tui.js';
-
-const VERSION = '0.1.0';
+import { VERSION } from './version.js';
 
 async function main(): Promise<void> {
   let options;
@@ -31,9 +30,11 @@ async function main(): Promise<void> {
     return;
   }
 
+  const scanStartedAt = performance.now();
+
   if (!options.json) {
     process.stdout.write(
-      `${pc.cyan('Scanning')} ${options.root} for ${options.targets.join(', ')} ...\n`,
+      `${pc.cyan('◌')} ${pc.dim('Scanning')} ${options.root} ${pc.dim(`for ${options.targets.join(', ')}`)}`,
     );
   }
 
@@ -42,6 +43,14 @@ async function main(): Promise<void> {
     targets: options.targets,
     excludes: new Set(options.excludes),
   });
+
+  const scanDurationMs = performance.now() - scanStartedAt;
+
+  if (!options.json && process.stdout.isTTY) {
+    process.stdout.write('\r\x1b[2K');
+  } else if (!options.json) {
+    process.stdout.write('\n');
+  }
 
   if (options.json) {
     console.log(JSON.stringify({
@@ -53,15 +62,11 @@ async function main(): Promise<void> {
     return;
   }
 
-  if (candidates.length > 0) {
-    const total = candidates.reduce((sum, item) => sum + item.sizeBytes, 0);
-    console.log(pc.dim(`Found ${candidates.length} environment(s), ${formatBytes(total)} total.`));
-  }
-
   await runTui(candidates, {
     root: options.root,
     targets: options.targets,
     dryRun: options.dryRun,
+    scanDurationMs,
   });
 }
 
