@@ -1,0 +1,1127 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="theme-color" content="#080b10" />
+  <title>VenvSweep — Find and remove forgotten Python virtual environments</title>
+  <meta
+    name="description"
+    content="VenvSweep is a fast interactive CLI for finding and removing Python virtual environments such as .venv, venv, and custom environment folders."
+  />
+  <style>
+    :root {
+      --bg: #080b10;
+      --bg-2: #0d1118;
+      --panel: rgba(18, 24, 33, 0.78);
+      --panel-strong: #111821;
+      --text: #f3f7fb;
+      --muted: #98a6b7;
+      --muted-2: #68778a;
+      --line: rgba(255,255,255,.09);
+      --green: #80f5b5;
+      --green-2: #31d989;
+      --blue: #75b7ff;
+      --yellow: #ffdb79;
+      --red: #ff8b8b;
+      --shadow: 0 24px 80px rgba(0,0,0,.34);
+      --radius-xl: 28px;
+      --radius-lg: 20px;
+      --radius-md: 14px;
+      --max: 1180px;
+    }
+
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background:
+        radial-gradient(900px 560px at 50% -10%, rgba(49,217,137,.12), transparent 62%),
+        radial-gradient(640px 420px at 88% 12%, rgba(117,183,255,.08), transparent 68%),
+        var(--bg);
+      color: var(--text);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      line-height: 1.55;
+      overflow-x: hidden;
+    }
+
+    a { color: inherit; text-decoration: none; }
+    button, input { font: inherit; }
+    button { color: inherit; }
+
+    .shell {
+      width: min(calc(100% - 32px), var(--max));
+      margin: 0 auto;
+    }
+
+    .grid-bg {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      opacity: .26;
+      background-image:
+        linear-gradient(rgba(255,255,255,.022) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,.022) 1px, transparent 1px);
+      background-size: 32px 32px;
+      mask-image: linear-gradient(to bottom, black 0%, transparent 80%);
+      z-index: -1;
+    }
+
+    .nav {
+      position: sticky;
+      top: 14px;
+      z-index: 20;
+      margin-top: 14px;
+    }
+
+    .nav-inner {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 20px;
+      padding: 10px 12px 10px 16px;
+      border: 1px solid var(--line);
+      background: rgba(9,13,19,.72);
+      backdrop-filter: blur(18px);
+      border-radius: 18px;
+      box-shadow: 0 12px 40px rgba(0,0,0,.18);
+    }
+
+    .brand {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      font-weight: 760;
+      letter-spacing: -.02em;
+    }
+
+    .brand-mark {
+      width: 30px;
+      height: 30px;
+      border: 1px solid rgba(128,245,181,.32);
+      background:
+        linear-gradient(135deg, rgba(128,245,181,.22), rgba(117,183,255,.10)),
+        #101721;
+      display: grid;
+      place-items: center;
+      border-radius: 9px;
+      box-shadow: inset 0 0 20px rgba(128,245,181,.07);
+    }
+
+    .brand-mark svg { width: 18px; height: 18px; }
+
+    .nav-links {
+      display: flex;
+      align-items: center;
+      gap: 24px;
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .nav-links a:hover { color: var(--text); }
+
+    .button {
+      border: 1px solid var(--line);
+      min-height: 42px;
+      padding: 0 16px;
+      border-radius: 12px;
+      background: #121a24;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 9px;
+      cursor: pointer;
+      transition: .2s ease;
+      font-weight: 680;
+      letter-spacing: -.01em;
+    }
+
+    .button:hover {
+      transform: translateY(-1px);
+      border-color: rgba(255,255,255,.18);
+      background: #16202c;
+    }
+
+    .button.primary {
+      color: #07100b;
+      background: linear-gradient(180deg, #9affc7, #6fe7a5);
+      border-color: rgba(172,255,207,.5);
+      box-shadow: 0 10px 30px rgba(49,217,137,.16);
+    }
+
+    .button.primary:hover { background: linear-gradient(180deg, #b3ffd5, #7df0af); }
+
+    .hero {
+      padding: 112px 0 76px;
+      text-align: center;
+    }
+
+    .eyebrow {
+      width: fit-content;
+      margin: 0 auto 18px;
+      padding: 7px 10px;
+      color: #c9f8dc;
+      background: rgba(49,217,137,.09);
+      border: 1px solid rgba(128,245,181,.16);
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 720;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+    }
+
+    .hero h1 {
+      max-width: 920px;
+      margin: 0 auto;
+      font-size: clamp(50px, 8vw, 92px);
+      line-height: .99;
+      letter-spacing: -.067em;
+      font-weight: 820;
+    }
+
+    .hero h1 .soft {
+      color: #aab5c3;
+      font-weight: 650;
+    }
+
+    .hero p {
+      max-width: 720px;
+      margin: 28px auto 0;
+      color: var(--muted);
+      font-size: clamp(17px, 2.1vw, 20px);
+      letter-spacing: -.015em;
+    }
+
+    .hero-actions {
+      margin-top: 30px;
+      display: flex;
+      justify-content: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .install {
+      margin: 26px auto 0;
+      width: min(100%, 470px);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 9px 10px 9px 15px;
+      border: 1px solid var(--line);
+      background: rgba(17,24,33,.76);
+      border-radius: 14px;
+      color: #dbe4ee;
+      box-shadow: var(--shadow);
+      font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+      font-size: 14px;
+    }
+
+    .install .prompt { color: var(--green); }
+    .copy-btn {
+      flex: 0 0 auto;
+      border: 1px solid var(--line);
+      background: rgba(255,255,255,.04);
+      color: var(--muted);
+      padding: 7px 10px;
+      border-radius: 9px;
+      cursor: pointer;
+    }
+    .copy-btn:hover { color: var(--text); }
+
+    .terminal-wrap {
+      position: relative;
+      padding-bottom: 118px;
+    }
+
+    .terminal-glow {
+      position: absolute;
+      width: 80%;
+      height: 220px;
+      left: 10%;
+      bottom: 72px;
+      border-radius: 50%;
+      background: rgba(49,217,137,.08);
+      filter: blur(64px);
+      z-index: -1;
+    }
+
+    .terminal {
+      overflow: hidden;
+      border: 1px solid rgba(255,255,255,.105);
+      border-radius: var(--radius-xl);
+      background: rgba(8,12,18,.93);
+      box-shadow: 0 42px 100px rgba(0,0,0,.48), inset 0 1px rgba(255,255,255,.02);
+    }
+
+    .terminal-top {
+      min-height: 53px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 18px;
+      border-bottom: 1px solid var(--line);
+      background: #0f151e;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .dots { display: flex; gap: 8px; }
+    .dot { width: 10px; height: 10px; border-radius: 50%; background: #2b3441; }
+    .terminal-title { font-family: "SFMono-Regular", Consolas, monospace; }
+
+    .terminal-body {
+      padding: 22px;
+      font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+      font-size: 13px;
+      text-align: left;
+    }
+
+    .terminal-intro {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      margin-bottom: 20px;
+      color: var(--muted);
+    }
+
+    .terminal-intro strong { color: var(--text); }
+    .status {
+      display: inline-flex;
+      gap: 8px;
+      align-items: center;
+      color: var(--green);
+      font-size: 12px;
+    }
+    .pulse {
+      width: 7px; height: 7px; border-radius: 50%;
+      background: var(--green);
+      box-shadow: 0 0 16px var(--green);
+    }
+
+    .controls-grid {
+      display: grid;
+      grid-template-columns: 1.3fr 1fr;
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+
+    .field {
+      min-height: 76px;
+      border: 1px solid var(--line);
+      background: rgba(255,255,255,.025);
+      border-radius: 14px;
+      padding: 12px 13px;
+    }
+
+    .field-label {
+      display: block;
+      margin-bottom: 8px;
+      color: var(--muted-2);
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: .11em;
+      font-weight: 760;
+    }
+
+    .folder-line {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      color: #dbe4ef;
+      overflow: hidden;
+    }
+    .folder-line span:last-child {
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .folder-icon { color: var(--yellow); }
+
+    .tags {
+      display: flex;
+      gap: 7px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+    .tag {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 5px 7px;
+      border-radius: 8px;
+      color: #cfe9da;
+      background: rgba(128,245,181,.07);
+      border: 1px solid rgba(128,245,181,.12);
+      font-size: 11px;
+    }
+
+    .target-input {
+      min-width: 88px;
+      flex: 1;
+      border: 0;
+      outline: 0;
+      color: var(--text);
+      background: transparent;
+      font-family: inherit;
+      font-size: 11px;
+    }
+    .target-input::placeholder { color: #4f5d6e; }
+
+    .table-head, .env-row {
+      display: grid;
+      grid-template-columns: 34px minmax(170px, 1fr) 90px 95px 105px;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .table-head {
+      min-height: 36px;
+      padding: 0 10px;
+      color: var(--muted-2);
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: .09em;
+      font-weight: 720;
+    }
+
+    .env-list {
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      overflow: hidden;
+    }
+
+    .env-row {
+      min-height: 54px;
+      padding: 0 10px;
+      color: #bcc8d5;
+      border-top: 1px solid rgba(255,255,255,.055);
+      cursor: pointer;
+      transition: background .14s ease;
+    }
+
+    .env-row:first-child { border-top: 0; }
+    .env-row:hover { background: rgba(255,255,255,.025); }
+    .env-row.active { background: rgba(117,183,255,.055); }
+    .env-row.selected { background: rgba(128,245,181,.05); }
+
+    .check {
+      width: 18px;
+      height: 18px;
+      border-radius: 5px;
+      display: grid;
+      place-items: center;
+      border: 1px solid #394657;
+      color: transparent;
+      font-size: 11px;
+    }
+    .selected .check {
+      color: #06140d;
+      border-color: var(--green);
+      background: var(--green);
+    }
+
+    .path {
+      min-width: 0;
+      color: #e0e7ef;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .path .env-name { color: var(--green); }
+    .size { color: #d9e4ee; text-align: right; }
+    .age { color: var(--muted); text-align: right; }
+    .python { color: var(--blue); text-align: right; }
+
+    .terminal-bottom {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 14px;
+      margin-top: 15px;
+      flex-wrap: wrap;
+    }
+
+    .keys {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      color: var(--muted-2);
+      font-size: 11px;
+    }
+    .key {
+      color: #d7e0eb;
+      border: 1px solid rgba(255,255,255,.13);
+      background: rgba(255,255,255,.035);
+      border-radius: 6px;
+      padding: 2px 6px;
+      box-shadow: inset 0 -1px rgba(255,255,255,.04);
+    }
+
+    .reclaim {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      color: var(--muted);
+      font-size: 11px;
+    }
+    .reclaim strong {
+      color: var(--green);
+      font-size: 14px;
+    }
+
+    .section {
+      padding: 95px 0;
+      border-top: 1px solid rgba(255,255,255,.045);
+    }
+
+    .section-header {
+      max-width: 690px;
+      margin-bottom: 44px;
+    }
+
+    .kicker {
+      margin-bottom: 9px;
+      color: var(--green);
+      font-family: "SFMono-Regular", Consolas, monospace;
+      font-size: 12px;
+    }
+
+    h2 {
+      margin: 0;
+      font-size: clamp(36px, 5vw, 58px);
+      line-height: 1.05;
+      letter-spacing: -.048em;
+    }
+
+    .section-header p {
+      color: var(--muted);
+      font-size: 17px;
+      margin: 16px 0 0;
+    }
+
+    .feature-grid {
+      display: grid;
+      grid-template-columns: repeat(12, 1fr);
+      gap: 14px;
+    }
+
+    .feature {
+      position: relative;
+      overflow: hidden;
+      min-height: 250px;
+      padding: 24px;
+      border: 1px solid var(--line);
+      background: linear-gradient(180deg, rgba(18,25,35,.73), rgba(12,17,24,.8));
+      border-radius: var(--radius-lg);
+    }
+
+    .feature.large { grid-column: span 7; }
+    .feature.small { grid-column: span 5; }
+    .feature.third { grid-column: span 4; min-height: 220px; }
+
+    .feature h3 {
+      margin: 10px 0 8px;
+      font-size: 21px;
+      letter-spacing: -.025em;
+    }
+    .feature p {
+      margin: 0;
+      max-width: 500px;
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .feature-icon {
+      width: 36px;
+      height: 36px;
+      display: grid;
+      place-items: center;
+      border-radius: 10px;
+      background: rgba(128,245,181,.08);
+      border: 1px solid rgba(128,245,181,.13);
+      color: var(--green);
+    }
+
+    .pattern-demo {
+      margin-top: 28px;
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .pattern-chip {
+      padding: 7px 9px;
+      border-radius: 9px;
+      border: 1px solid var(--line);
+      background: rgba(255,255,255,.026);
+      font-family: "SFMono-Regular", Consolas, monospace;
+      font-size: 12px;
+      color: #c8d3df;
+    }
+
+    .pattern-chip.default::before {
+      content: "default";
+      margin-right: 7px;
+      color: var(--green);
+      font-size: 9px;
+      text-transform: uppercase;
+      letter-spacing: .06em;
+    }
+
+    .stat-line {
+      position: absolute;
+      left: 24px;
+      right: 24px;
+      bottom: 24px;
+      height: 74px;
+      border-top: 1px solid var(--line);
+      display: flex;
+      align-items: flex-end;
+      gap: 5px;
+    }
+    .bar {
+      flex: 1;
+      border-radius: 5px 5px 2px 2px;
+      background: linear-gradient(180deg, rgba(128,245,181,.8), rgba(128,245,181,.12));
+      min-width: 8px;
+    }
+
+    .steps {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 14px;
+    }
+
+    .step {
+      padding: 26px;
+      border-radius: var(--radius-lg);
+      border: 1px solid var(--line);
+      background: rgba(15,21,30,.7);
+    }
+
+    .step-num {
+      color: var(--muted-2);
+      font-family: "SFMono-Regular", Consolas, monospace;
+      font-size: 12px;
+    }
+
+    .step h3 {
+      margin: 48px 0 8px;
+      font-size: 22px;
+      letter-spacing: -.03em;
+    }
+    .step p { margin: 0; color: var(--muted); font-size: 14px; }
+
+    .code-card {
+      margin-top: 16px;
+      border-radius: var(--radius-lg);
+      border: 1px solid var(--line);
+      background: #0d131b;
+      overflow: hidden;
+    }
+
+    .code-line {
+      display: grid;
+      grid-template-columns: 52px 1fr;
+      padding: 10px 16px 10px 0;
+      border-top: 1px solid rgba(255,255,255,.04);
+      font-family: "SFMono-Regular", Consolas, monospace;
+      font-size: 13px;
+      color: #cbd5e1;
+    }
+    .code-line:first-child { border-top: 0; }
+    .ln { color: #465466; text-align: center; user-select: none; }
+    .cmd { color: var(--green); }
+    .arg { color: var(--blue); }
+    .comment { color: #617084; }
+
+    .safety {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
+    }
+
+    .safety-card {
+      padding: 28px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius-lg);
+      background: rgba(15,21,30,.72);
+    }
+
+    .safety-card h3 {
+      margin: 11px 0 9px;
+      font-size: 23px;
+      letter-spacing: -.03em;
+    }
+
+    .safety-card p { margin: 0; color: var(--muted); }
+
+    .cta {
+      padding: 104px 0 120px;
+    }
+
+    .cta-box {
+      position: relative;
+      overflow: hidden;
+      padding: 72px 28px;
+      text-align: center;
+      border: 1px solid rgba(128,245,181,.15);
+      border-radius: 30px;
+      background:
+        radial-gradient(600px 220px at 50% 110%, rgba(49,217,137,.13), transparent 70%),
+        linear-gradient(180deg, rgba(20,29,39,.82), rgba(10,15,22,.96));
+    }
+
+    .cta-box h2 { max-width: 740px; margin: 0 auto; }
+    .cta-box p { max-width: 600px; margin: 17px auto 0; color: var(--muted); }
+    .cta-box .hero-actions { margin-top: 26px; }
+
+    .footer {
+      padding: 28px 0 36px;
+      border-top: 1px solid var(--line);
+      color: var(--muted-2);
+      font-size: 13px;
+    }
+    .footer-inner {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 20px;
+      flex-wrap: wrap;
+    }
+
+    .mono { font-family: "SFMono-Regular", Consolas, monospace; }
+
+    @media (max-width: 900px) {
+      .nav-links { display: none; }
+      .hero { padding-top: 92px; }
+      .controls-grid, .safety { grid-template-columns: 1fr; }
+      .feature.large, .feature.small, .feature.third { grid-column: span 12; }
+      .steps { grid-template-columns: 1fr; }
+      .step h3 { margin-top: 26px; }
+      .table-head, .env-row {
+        grid-template-columns: 30px minmax(160px, 1fr) 72px;
+      }
+      .age, .python, .table-head .hide-mobile { display: none; }
+    }
+
+    @media (max-width: 580px) {
+      .shell { width: min(calc(100% - 20px), var(--max)); }
+      .nav .button { padding: 0 12px; min-height: 38px; }
+      .brand span:last-child { font-size: 14px; }
+      .hero { padding: 76px 0 58px; }
+      .hero h1 { font-size: clamp(46px, 15vw, 72px); }
+      .terminal-wrap { padding-bottom: 82px; }
+      .terminal { border-radius: 20px; }
+      .terminal-body { padding: 14px; font-size: 11px; }
+      .terminal-intro { align-items: flex-start; flex-direction: column; }
+      .table-head { padding: 0 7px; }
+      .env-row { padding: 0 7px; gap: 7px; }
+      .section { padding: 72px 0; }
+      .feature, .step, .safety-card { padding: 20px; }
+      .cta { padding: 78px 0 90px; }
+      .cta-box { padding: 56px 18px; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      * { scroll-behavior: auto !important; transition: none !important; }
+    }
+  </style>
+</head>
+<body>
+  <div class="grid-bg"></div>
+
+  <header class="nav shell">
+    <div class="nav-inner">
+      <a class="brand" href="#top" aria-label="VenvSweep home">
+        <span class="brand-mark" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none">
+            <path d="M5 7.5h14M7 7.5l1 12h8l1-12M9.5 7.5V5h5v2.5M9.5 11v5M14.5 11v5"
+              stroke="currentColor" stroke-width="1.7" stroke-linecap="round" />
+          </svg>
+        </span>
+        <span>VenvSweep</span>
+      </a>
+
+      <nav class="nav-links" aria-label="Primary navigation">
+        <a href="#features">Features</a>
+        <a href="#workflow">How it works</a>
+        <a href="#safety">Safety</a>
+      </nav>
+
+      <a class="button" href="#install">Get started</a>
+    </div>
+  </header>
+
+  <main id="top">
+    <section class="hero shell">
+      <div class="eyebrow">Python env cleanup, without the hunt</div>
+      <h1>Kill stale venvs.<br><span class="soft">Keep your projects.</span></h1>
+      <p>
+        Find forgotten Python virtual environments across your workspace, review what they cost,
+        select with your keyboard, and remove only what you choose.
+      </p>
+
+      <div class="hero-actions">
+        <a class="button primary" href="#install">Run with npx</a>
+        <a class="button" href="#terminal-demo">See the TUI</a>
+      </div>
+
+      <div class="install" id="install">
+        <span><span class="prompt">$</span> npx venvsweep</span>
+        <button class="copy-btn" data-copy="npx venvsweep" aria-label="Copy install command">Copy</button>
+      </div>
+    </section>
+
+    <section class="terminal-wrap shell" id="terminal-demo">
+      <div class="terminal-glow"></div>
+      <div class="terminal" tabindex="0" aria-label="Interactive VenvSweep terminal demo">
+        <div class="terminal-top">
+          <div class="dots" aria-hidden="true">
+            <span class="dot"></span><span class="dot"></span><span class="dot"></span>
+          </div>
+          <div class="terminal-title">~/code — venvsweep</div>
+          <div>interactive demo</div>
+        </div>
+
+        <div class="terminal-body">
+          <div class="terminal-intro">
+            <div><strong>VenvSweep 0.1.0</strong> <span>— scanning workspace</span></div>
+            <div class="status"><span class="pulse"></span> 6 environments found</div>
+          </div>
+
+          <div class="controls-grid">
+            <div class="field">
+              <span class="field-label">Search root</span>
+              <div class="folder-line">
+                <span class="folder-icon">⌁</span>
+                <span>~/Developer</span>
+              </div>
+            </div>
+
+            <div class="field">
+              <span class="field-label">Targets</span>
+              <div class="tags" id="target-tags">
+                <span class="tag">.venv</span>
+                <span class="tag">venv</span>
+                <input id="target-input" class="target-input" placeholder="+ add .my-venv" aria-label="Add target pattern" />
+              </div>
+            </div>
+          </div>
+
+          <div class="table-head" aria-hidden="true">
+            <span></span>
+            <span>Environment</span>
+            <span style="text-align:right">Size</span>
+            <span class="hide-mobile" style="text-align:right">Last used</span>
+            <span class="hide-mobile" style="text-align:right">Python</span>
+          </div>
+
+          <div class="env-list" id="env-list">
+            <div class="env-row active" data-size="1820" tabindex="0">
+              <span class="check">✓</span>
+              <span class="path">analytics-api/<span class="env-name">.venv</span></span>
+              <span class="size">1.82 GB</span>
+              <span class="age">8 months</span>
+              <span class="python">3.11.8</span>
+            </div>
+            <div class="env-row" data-size="936" tabindex="0">
+              <span class="check">✓</span>
+              <span class="path">ml-playground/<span class="env-name">venv</span></span>
+              <span class="size">936 MB</span>
+              <span class="age">5 months</span>
+              <span class="python">3.12.2</span>
+            </div>
+            <div class="env-row selected" data-size="2410" tabindex="0">
+              <span class="check">✓</span>
+              <span class="path">vision-lab/<span class="env-name">.my-venv</span></span>
+              <span class="size">2.41 GB</span>
+              <span class="age">11 months</span>
+              <span class="python">3.10.13</span>
+            </div>
+            <div class="env-row" data-size="624" tabindex="0">
+              <span class="check">✓</span>
+              <span class="path">tiny-tools/<span class="env-name">.venv</span></span>
+              <span class="size">624 MB</span>
+              <span class="age">2 months</span>
+              <span class="python">3.13.1</span>
+            </div>
+            <div class="env-row selected" data-size="1280" tabindex="0">
+              <span class="check">✓</span>
+              <span class="path">archive/old-bot/<span class="env-name">venv</span></span>
+              <span class="size">1.28 GB</span>
+              <span class="age">1.4 years</span>
+              <span class="python">3.9.18</span>
+            </div>
+            <div class="env-row" data-size="388" tabindex="0">
+              <span class="check">✓</span>
+              <span class="path">scraper-next/<span class="env-name">.venv</span></span>
+              <span class="size">388 MB</span>
+              <span class="age">3 weeks</span>
+              <span class="python">3.12.6</span>
+            </div>
+          </div>
+
+          <div class="terminal-bottom">
+            <div class="keys">
+              <span><span class="key">↑↓</span> move</span>
+              <span><span class="key">Space</span> select</span>
+              <span><span class="key">A</span> all</span>
+              <span><span class="key">Enter</span> remove</span>
+              <span><span class="key">/</span> filter</span>
+            </div>
+            <div class="reclaim">
+              selected <span id="selected-count">2</span>
+              <strong id="reclaim-size">3.69 GB reclaimable</strong>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section shell" id="features">
+      <div class="section-header">
+        <div class="kicker">01 / Built for messy Python workspaces</div>
+        <h2>Your env folder doesn't have to be called <span class="mono">.venv</span>.</h2>
+        <p>
+          VenvSweep starts with sensible defaults, then lets every team or developer add the
+          folder names they actually use.
+        </p>
+      </div>
+
+      <div class="feature-grid">
+        <article class="feature large">
+          <div class="feature-icon">⌕</div>
+          <h3>Auto-detect common virtual environments</h3>
+          <p>
+            Scan from the current directory or choose a root folder. Detect <span class="mono">.venv</span>
+            and <span class="mono">venv</span> out of the box, with room for project-specific names.
+          </p>
+          <div class="pattern-demo">
+            <span class="pattern-chip default">.venv</span>
+            <span class="pattern-chip default">venv</span>
+            <span class="pattern-chip">.my-venv</span>
+            <span class="pattern-chip">env-py312</span>
+            <span class="pattern-chip">backend-env</span>
+          </div>
+        </article>
+
+        <article class="feature small">
+          <div class="feature-icon">↯</div>
+          <h3>See the storage cost first</h3>
+          <p>
+            Surface environment size, path, Python version, and recency so old 2 GB environments
+            stop hiding inside forgotten side projects.
+          </p>
+          <div class="stat-line" aria-hidden="true">
+            <span class="bar" style="height:24%"></span>
+            <span class="bar" style="height:46%"></span>
+            <span class="bar" style="height:33%"></span>
+            <span class="bar" style="height:72%"></span>
+            <span class="bar" style="height:55%"></span>
+            <span class="bar" style="height:92%"></span>
+            <span class="bar" style="height:38%"></span>
+            <span class="bar" style="height:66%"></span>
+          </div>
+        </article>
+
+        <article class="feature third">
+          <div class="feature-icon">⌨</div>
+          <h3>Keyboard-first</h3>
+          <p>Move with arrows or j/k, toggle items with Space, select all with A, then confirm once.</p>
+        </article>
+
+        <article class="feature third">
+          <div class="feature-icon">⌁</div>
+          <h3>Pick the scan root</h3>
+          <p>Start where you are, pass a directory flag, or interactively choose a projects folder.</p>
+        </article>
+
+        <article class="feature third">
+          <div class="feature-icon">◌</div>
+          <h3>Fast re-creation mindset</h3>
+          <p>Only target regenerable virtual environments. Keep source files and project manifests untouched.</p>
+        </article>
+      </div>
+    </section>
+
+    <section class="section shell" id="workflow">
+      <div class="section-header">
+        <div class="kicker">02 / Three steps</div>
+        <h2>Scan. Select. Sweep.</h2>
+        <p>Minimal commands, visible consequences, and no need to manually crawl every repository.</p>
+      </div>
+
+      <div class="steps">
+        <article class="step">
+          <div class="step-num">01</div>
+          <h3>Choose where to look</h3>
+          <p>Run in the current folder or point VenvSweep at a workspace containing many Python projects.</p>
+        </article>
+        <article class="step">
+          <div class="step-num">02</div>
+          <h3>Review the candidates</h3>
+          <p>Sort or filter the detected environments, then use Space to build your cleanup selection.</p>
+        </article>
+        <article class="step">
+          <div class="step-num">03</div>
+          <h3>Confirm the removal</h3>
+          <p>Press Enter, review the total reclaimable storage, and confirm before anything is deleted.</p>
+        </article>
+      </div>
+
+      <div class="code-card">
+        <div class="code-line"><span class="ln">1</span><span><span class="comment"># scan the current folder</span></span></div>
+        <div class="code-line"><span class="ln">2</span><span><span class="cmd">npx venvsweep</span></span></div>
+        <div class="code-line"><span class="ln">3</span><span>&nbsp;</span></div>
+        <div class="code-line"><span class="ln">4</span><span><span class="comment"># scan a workspace</span></span></div>
+        <div class="code-line"><span class="ln">5</span><span><span class="cmd">npx venvsweep</span> <span class="arg">~/Developer</span></span></div>
+        <div class="code-line"><span class="ln">6</span><span>&nbsp;</span></div>
+        <div class="code-line"><span class="ln">7</span><span><span class="comment"># add custom environment folder names</span></span></div>
+        <div class="code-line"><span class="ln">8</span><span><span class="cmd">npx venvsweep</span> <span class="arg">--targets .venv,venv,.my-venv</span></span></div>
+        <div class="code-line"><span class="ln">9</span><span>&nbsp;</span></div>
+        <div class="code-line"><span class="ln">10</span><span><span class="comment"># preview only — never delete</span></span></div>
+        <div class="code-line"><span class="ln">11</span><span><span class="cmd">npx venvsweep</span> <span class="arg">--dry-run</span></span></div>
+      </div>
+    </section>
+
+    <section class="section shell" id="safety">
+      <div class="section-header">
+        <div class="kicker">03 / Deletion needs guardrails</div>
+        <h2>Fast cleanup shouldn't mean reckless cleanup.</h2>
+      </div>
+
+      <div class="safety">
+        <article class="safety-card">
+          <div class="feature-icon">✓</div>
+          <h3>Explicit selection</h3>
+          <p>
+            No environment is removed just because it was found. VenvSweep makes the user select
+            candidates first and shows the total space before confirmation.
+          </p>
+        </article>
+
+        <article class="safety-card">
+          <div class="feature-icon">◎</div>
+          <h3>Dry-run friendly</h3>
+          <p>
+            Add a preview mode for scripts and CI, plus exclusions for directories that should
+            never be traversed or deleted.
+          </p>
+        </article>
+      </div>
+    </section>
+
+    <section class="cta shell">
+      <div class="cta-box">
+        <div class="eyebrow">Open-source developer tool</div>
+        <h2>Stop carrying gigabytes of Python environments you forgot existed.</h2>
+        <p>
+          One interactive command for <span class="mono">.venv</span>, <span class="mono">venv</span>,
+          and every custom name your projects have accumulated.
+        </p>
+        <div class="hero-actions">
+          <button class="button primary copy-run" data-copy="npx venvsweep">Copy npx command</button>
+          <a class="button" href="#" onclick="event.preventDefault()">GitHub soon</a>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <div class="shell footer-inner">
+      <span>VenvSweep — a working project name.</span>
+      <span class="mono">MIT · TypeScript · npm</span>
+    </div>
+  </footer>
+
+  <script>
+    const rows = Array.from(document.querySelectorAll('.env-row'));
+    const reclaimSize = document.getElementById('reclaim-size');
+    const selectedCount = document.getElementById('selected-count');
+    const terminal = document.querySelector('.terminal');
+    let activeIndex = 0;
+
+    function formatMB(mb) {
+      return mb >= 1000 ? (mb / 1000).toFixed(2) + ' GB reclaimable' : mb + ' MB reclaimable';
+    }
+
+    function updateSelection() {
+      const selected = rows.filter(r => r.classList.contains('selected'));
+      const total = selected.reduce((sum, row) => sum + Number(row.dataset.size), 0);
+      selectedCount.textContent = selected.length;
+      reclaimSize.textContent = formatMB(total);
+    }
+
+    function setActive(index) {
+      rows.forEach(r => r.classList.remove('active'));
+      activeIndex = (index + rows.length) % rows.length;
+      rows[activeIndex].classList.add('active');
+      rows[activeIndex].scrollIntoView({ block: 'nearest' });
+    }
+
+    function toggleRow(row) {
+      row.classList.toggle('selected');
+      updateSelection();
+    }
+
+    rows.forEach((row, index) => {
+      row.addEventListener('click', () => {
+        setActive(index);
+        toggleRow(row);
+        terminal.focus();
+      });
+      row.addEventListener('focus', () => setActive(index));
+    });
+
+    terminal.addEventListener('keydown', (event) => {
+      const key = event.key.toLowerCase();
+      if (['arrowdown', 'arrowup', ' ', 'j', 'k', 'a'].includes(key)) {
+        event.preventDefault();
+      }
+      if (key === 'arrowdown' || key === 'j') setActive(activeIndex + 1);
+      if (key === 'arrowup' || key === 'k') setActive(activeIndex - 1);
+      if (key === ' ') toggleRow(rows[activeIndex]);
+      if (key === 'a') {
+        const shouldSelect = rows.some(r => !r.classList.contains('selected'));
+        rows.forEach(r => r.classList.toggle('selected', shouldSelect));
+        updateSelection();
+      }
+    });
+
+    document.querySelectorAll('[data-copy]').forEach(button => {
+      button.addEventListener('click', async () => {
+        const value = button.dataset.copy;
+        try {
+          await navigator.clipboard.writeText(value);
+          const previous = button.textContent;
+          button.textContent = 'Copied';
+          setTimeout(() => button.textContent = previous, 1300);
+        } catch {
+          button.textContent = value;
+        }
+      });
+    });
+
+    const targetInput = document.getElementById('target-input');
+    const tags = document.getElementById('target-tags');
+    targetInput.addEventListener('keydown', (event) => {
+      if (event.key === 'Enter') {
+        event.preventDefault();
+        const value = targetInput.value.trim();
+        if (!value) return;
+        const tag = document.createElement('span');
+        tag.className = 'tag';
+        tag.textContent = value;
+        tags.insertBefore(tag, targetInput);
+        targetInput.value = '';
+      }
+    });
+
+    updateSelection();
+  </script>
+</body>
+</html>

@@ -1,0 +1,39 @@
+{
+  "name": "venvsweep",
+  "version": "0.1.0",
+  "description": "Interactive CLI to find and safely remove Python virtual environments.",
+  "type": "module",
+  "bin": {
+    "venvsweep": "dist/cli.js"
+  },
+  "files": [
+    "dist/**/*",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "dev": "tsx src/cli.ts",
+    "start": "node dist/cli.js",
+    "test": "node --test test/*.test.mjs",
+    "prepublishOnly": "npm run build"
+  },
+  "engines": {
+    "node": ">=18.18.0"
+  },
+  "keywords": [
+    "python",
+    "venv",
+    "virtualenv",
+    "cli",
+    "cleanup",
+    "disk-space",
+    "tui"
+  ],
+  "license": "MIT",
+  "devDependencies": {
+    "@types/node": "^22.20.1",
+    "tsx": "^4.19.4",
+    "typescript": "^5.9.3"
+  }
+}
