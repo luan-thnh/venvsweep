@@ -1,6 +1,6 @@
 {
   "name": "venvsweep",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Interactive CLI to find and safely remove Python virtual environments.",
   "type": "module",
   "bin": {
